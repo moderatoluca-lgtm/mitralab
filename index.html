@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MitraLab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: console ecografica. Pannello immagine a sinistra, comandi e misure a destra, tracce Doppler sotto, poi atlante dei parametri. Tema unico scuro, come lo schermo di un ecografo. */
+:root{
+  --bg:#0d1319;
+  --panel:#141c24;
+  --panel-2:#1a242e;
+  --line:#26333f;
+  --fg:#dfe7ec;
+  --muted:#8b9ba8;
+  --caliper:#f0c04a;
+  --dop-red:#e2483d;
+  --dop-blue:#3d82d8;
+  --ok:#6fbf8e;
+  --mid:#e3a43c;
+  --sev:#e2584c;
+  --link:#8fc3f0;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.55;margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+a{color:var(--link)}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding-block:10px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:.04em}
+.brand span{color:var(--caliper)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:4px}
+nav a:hover,nav a:focus-visible{color:var(--fg);background:var(--panel-2)}
+.intro{padding-block:28px 8px}
+.eyebrow{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--caliper)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(32px,5vw,50px);line-height:1.05;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,3.4vw,34px);line-height:1.1;margin:0 0 6px;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:21px;line-height:1.15;margin:0;letter-spacing:.01em}
+.lede{max-width:68ch;color:var(--fg);font-size:17px;margin:0}
+.lede em{color:var(--muted)}
+section{padding-block:34px}
+section+section{border-top:1px solid var(--line)}
+.sub{color:var(--muted);max-width:70ch;margin:0 0 20px}
+
+/* simulatore */
+.sim{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:920px){.sim{grid-template-columns:minmax(0,1fr)}}
+.screen{background:#05080b;border:1px solid var(--line);border-radius:6px;overflow:hidden;position:relative}
+.screen canvas{display:block;width:100%;height:auto}
+.hud{position:absolute;left:10px;top:8px;font-family:var(--f-mono);font-size:11px;color:#9fb0bc;line-height:1.5;pointer-events:none}
+.hud b{color:var(--caliper);font-weight:600}
+.hud-r{left:auto;right:10px;text-align:right}
+.ctrl{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.field{display:flex;flex-direction:column;gap:6px}
+.lab{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.lab output{font-family:var(--f-mono);font-size:13px;letter-spacing:0;text-transform:none;color:var(--caliper)}
+input[type=range]{width:100%;accent-color:var(--caliper)}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.seg button,.toggles button,.btn{font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--fg);background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:7px 10px;cursor:pointer;text-align:left}
+.seg button[aria-pressed=true],.toggles button[aria-pressed=true]{border-color:var(--caliper);color:var(--caliper);background:#221e12}
+.seg3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.seg3 button{text-align:center}
+.pgrid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center}
+.pgrid .pl{font-size:14px}
+.pgrid .pb{display:flex;gap:3px}
+.pgrid .pb button{font-family:var(--f-body);font-size:12.5px;font-weight:600;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:4px 7px;cursor:pointer;min-width:34px}
+.pgrid .pb button[aria-pressed=true]{color:var(--caliper);border-color:var(--caliper);background:#221e12}
+.pgrid .pb button.l[aria-pressed=true]{color:var(--ok);border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.pgrid .pb button.m[aria-pressed=true]{color:var(--mid);border-color:var(--mid);background:color-mix(in srgb,var(--mid) 12%,transparent)}
+.pgrid .pb button.s[aria-pressed=true]{color:var(--sev);border-color:var(--sev);background:color-mix(in srgb,var(--sev) 12%,transparent)}
+.pvx{margin-top:18px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+@media (max-width:860px){.pvx{grid-template-columns:minmax(0,1fr)}}
+.pvx h3{margin-bottom:8px}
+.pvx dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;font-size:14.5px}
+.pvx dt{font-family:var(--f-mono);font-weight:600;color:var(--caliper)}
+.pvx dd{margin:0}
+.pvx .patt{display:grid;gap:10px;font-size:14.5px}
+.pvx .patt div{background:var(--panel-2);border-radius:5px;padding:10px 12px}
+.pvx .patt b{font-family:var(--f-display);font-size:16px;letter-spacing:.03em}
+select{font-family:var(--f-body);font-size:14px;color:var(--fg);background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 8px;width:100%;min-width:0}
+select:focus-visible{outline:2px solid var(--caliper);outline-offset:2px}
+.seg button small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.toggles{display:flex;gap:6px;flex-wrap:wrap}
+.btn:hover,.seg button:hover,.toggles button:hover{border-color:#3b4b59}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--caliper);outline-offset:2px}
+.zoomwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.zoomwrap .cap{font-size:13px;color:var(--muted)}
+
+.readout{width:100%;border-collapse:collapse;font-size:14px}
+.readout th{font-family:var(--f-display);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 6px 6px;border-bottom:1px solid var(--line)}
+.readout td{padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
+.readout td.v{font-family:var(--f-mono);font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.readout tr.flash td{background:#2a2412;transition:background .2s}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap;border:1px solid}
+.c-ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 55%,transparent);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.c-mid{color:var(--mid);border-color:color-mix(in srgb,var(--mid) 55%,transparent);background:color-mix(in srgb,var(--mid) 12%,transparent)}
+.c-sev{color:var(--sev);border-color:color-mix(in srgb,var(--sev) 55%,transparent);background:color-mix(in srgb,var(--sev) 12%,transparent)}
+.c-na{color:var(--muted);border-color:var(--line)}
+.verdict{border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:var(--panel-2);font-size:15px}
+.verdict b{font-family:var(--f-display);font-size:17px;letter-spacing:.03em}
+
+.dops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
+@media (max-width:920px){.dops{grid-template-columns:minmax(0,1fr)}}
+.dop{background:#05080b;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.dop canvas{display:block;width:100%;height:auto}
+.dop .t{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line);font-family:var(--f-display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:14px}
+.dop .t span:last-child{font-family:var(--f-mono);text-transform:none;letter-spacing:0;color:var(--caliper);font-size:12px;font-weight:400}
+.dop p{margin:0;padding:8px 10px 10px;font-size:13px;color:var(--muted)}
+
+/* atlante */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+@media (max-width:420px){.cards{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card .head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cut{font-family:var(--f-mono);font-size:13px;color:var(--caliper)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.metric{background:var(--panel-2);border-radius:5px;padding:8px 10px;min-width:0}
+.metric .k{font-size:12px;color:var(--muted);line-height:1.3}
+.metric .n{font-family:var(--f-mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.metric .n.none{font-size:14px;font-weight:400;color:var(--muted);font-family:var(--f-body)}
+.bar{height:5px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--caliper)}
+dl.meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:0;font-size:14px}
+dl.meta dt{color:var(--muted)}
+dl.meta dd{margin:0}
+.caveat{font-size:14px;border-left:2px solid var(--mid);padding-left:10px;color:var(--fg)}
+.trust{font-size:13px;color:var(--muted)}
+.trust b{color:var(--fg)}
+.card .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:auto}
+.card .foot a{font-size:13px;word-break:break-all}
+
+/* algoritmo */
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:920px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;min-width:0}
+.step .num{font-family:var(--f-display);font-weight:700;color:var(--caliper);font-size:15px;letter-spacing:.1em}
+.step ul{margin:8px 0 0;padding-left:18px;font-size:14px}
+.step li{margin-bottom:4px}
+.twocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+@media (max-width:760px){.twocol{grid-template-columns:minmax(0,1fr)}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;min-width:0}
+.box ul{margin:8px 0 0;padding-left:18px;font-size:14px}
+.tbl-wrap{overflow-x:auto;margin-top:16px;border:1px solid var(--line);border-radius:6px}
+table.grade{border-collapse:collapse;width:100%;min-width:640px;font-size:14px}
+table.grade th,table.grade td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+table.grade th{background:var(--panel);font-family:var(--f-display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+table.grade td{font-variant-numeric:tabular-nums}
+table.grade td:nth-child(2){color:var(--ok)} table.grade td:nth-child(3){color:var(--mid)} table.grade td:nth-child(4){color:var(--sev)}
+
+/* casi */
+.cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.cases{grid-template-columns:minmax(0,1fr)}}
+.case{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.case p{margin:0;font-size:15px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{text-align:left;font-family:var(--f-body);font-size:14px;color:var(--fg);background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:8px 10px;cursor:pointer}
+.opts button.right{border-color:var(--ok);color:var(--ok)}
+.opts button.wrong{border-color:var(--sev);color:var(--sev)}
+.fb{font-size:14px;border-top:1px solid var(--line);padding-top:10px}
+
+/* trappole */
+.pits{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+@media (max-width:420px){.pits{grid-template-columns:minmax(0,1fr)}}
+.pit{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.pit h3{margin-bottom:10px}
+.pit ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.pit li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;font-size:14.5px;line-height:1.45}
+.tag{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:3px;margin-top:2px;min-width:62px;text-align:center}
+.tag.trap{color:var(--sev);background:color-mix(in srgb,var(--sev) 14%,transparent)}
+.tag.tip{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.pit .src{margin-top:12px;font-size:12.5px;color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:16px;align-items:center}
+
+.bay{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:920px){.bay{grid-template-columns:minmax(0,1fr)}}
+.brows{display:flex;flex-direction:column;gap:8px}
+.brow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:8px 10px}
+.brow .nm{font-size:14.5px;font-weight:600}
+.brow .src{font-size:12px;color:var(--muted);grid-column:1/-1}
+.brow .st{display:flex;gap:3px}
+.brow .st button{font-family:var(--f-body);font-size:12.5px;font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;cursor:pointer}
+.brow .st button[aria-pressed=true][data-v="pos"]{color:var(--sev);border-color:var(--sev)}
+.brow .st button[aria-pressed=true][data-v="neg"]{color:var(--ok);border-color:var(--ok)}
+.brow .st button[aria-pressed=true][data-v="na"]{color:var(--fg);border-color:#4a5b69}
+.brow .ss{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);grid-column:1/-1;flex-wrap:wrap}
+.brow .ss input{width:64px}
+input[type=number]{font-family:var(--f-mono);font-size:13px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 6px;min-width:0}
+input[type=number]:focus-visible{outline:2px solid var(--caliper);outline-offset:1px}
+.brow.off{opacity:.75}
+.bres .big{font-family:var(--f-display);font-weight:700;font-size:64px;line-height:1;font-variant-numeric:tabular-nums}
+.pbar{position:relative;height:12px;background:linear-gradient(90deg,color-mix(in srgb,var(--ok) 40%,transparent) 0 20%,color-mix(in srgb,var(--mid) 35%,transparent) 20% 80%,color-mix(in srgb,var(--sev) 40%,transparent) 80% 100%);border-radius:6px;overflow:visible}
+.pbar i{position:absolute;top:-3px;width:4px;height:18px;background:var(--fg);border-radius:2px;transform:translateX(-2px)}
+.pbar b{position:absolute;top:-3px;width:2px;height:18px;background:var(--muted);transform:translateX(-1px)}
+.pscale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.pscale span:nth-child(2){margin-left:12%}.pscale span:nth-child(3){margin-right:12%}
+.tgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:18px;align-items:start}
+@media (max-width:860px){.tgrid{grid-template-columns:minmax(0,1fr)}}
+.fgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,150px);gap:8px 12px;align-items:center;font-size:14px}
+.fgrid label{color:var(--fg)}
+.fgrid select,.fgrid input{width:100%}
+.fgrid .hd{grid-column:1/-1;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.tl{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:var(--panel-2);font-size:15px}
+.tl .dot{width:18px;height:18px;border-radius:50%;flex:none}
+.tl b{font-family:var(--f-display);font-size:18px;letter-spacing:.02em}
+#bayRows .chip,#coaptRows .chip,#propRows .chip{white-space:normal}
+#bayRows td:first-child{min-width:0}
+.chartbox{overflow-x:auto}
+.chartbox svg{width:100%;max-width:520px;height:auto;display:block}
+
+/* bibliografia */
+ol.refs{padding-left:22px;max-width:90ch;font-size:15px}
+ol.refs li{margin-bottom:8px}
+ol.refs a{word-break:break-all}
+.limits{max-width:76ch}
+.limits p{margin:0 0 12px}
+footer{padding-block:24px 40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Mitra<span>Lab</span></div>
+    <nav aria-label="Sezioni">
+      <a href="#simulatore">Simulatore</a>
+      <a href="#lembi">Lembi</a>
+      <a href="#calcolo">Calcolatore</a>
+      <a href="#teer">MitraClip</a>
+      <a href="#atlante">Parametri</a>
+      <a href="accuratezza.html" >Foglio</a>
+      <a href="#trucchi">Trappole</a>
+      <a href="#algoritmo">Algoritmo</a>
+      <a href="#casi">Casi</a>
+      <a href="#fonti">Fonti</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap intro">
+  <div class="eyebrow">Ecocardiografia valvolare · insufficienza mitralica primitiva</div>
+  <h1>Leggere un'IM primitiva parametro per parametro</h1>
+  <p class="lede">Scegli il grado, il meccanismo e il gain: la quattro camere apicale, lo zoom sulla convergenza e le tre tracce Doppler cambiano insieme. Più sotto c'è la parasternale per riconoscere billowing, prolasso e flail. Sotto trovi, per ogni misura, il cut-off, la sensibilità e la specificità che lo studio originale ha davvero riportato, con il limite principale di quel dato. <em>Modello didattico semplificato: i numeri del simulatore derivano da formule geometriche, non da pazienti.</em></p>
+</div>
+
+<section id="simulatore">
+  <div class="wrap">
+    <h2>Simulatore</h2>
+    <p class="sub">Si parte da un'IM severa da prolasso del lembo posteriore. Scegli lesione e lembo, poi metti ogni parametro (EROA, vena contracta, vena polmonare, E/A, atrio) su lieve, moderato o severo, oppure lascialo su Auto perché segua il grado reale. "Solo anatomia" spegne il colore e mostra piano anulare e spostamento dei lembi. Alza il gain colore per vedere getto e VC gonfiarsi mentre la PISA resta ferma.</p>
+    <div class="sim">
+      <div>
+        <div class="screen">
+          <canvas id="main" width="560" height="500" aria-label="Quattro camere apicale animata con color Doppler dell'insufficienza mitralica"></canvas>
+          <div class="hud">A4C · convenzione ASE<br>Nyquist <b id="hudNyq">40</b> cm/s<br>FC <b id="hudHr">65</b> bpm</div>
+          <div class="hud hud-r" id="hudMech">Prolasso P2</div>
+        </div>
+        <div class="dops">
+          <div class="dop"><div class="t"><span>CW mitrale</span><span id="cwLab"></span></div><canvas id="cw" width="380" height="190" aria-label="Doppler continuo del getto rigurgitante"></canvas><p>Densità e forma del segnale. Un profilo denso e triangolare, con picco precoce, indica un'onda v atriale elevata.</p></div>
+          <div class="dop"><div class="t"><span>PW afflusso mitralico</span><span id="pwLab"></span></div><canvas id="pw" width="380" height="190" aria-label="Doppler pulsato dell'afflusso mitralico"></canvas><p>Onda E alta se il volume rigurgitante torna in ventricolo in diastole. Il pattern A-dominante va contro un'IM severa.</p></div>
+          <div class="dop"><div class="t"><span>PW vena polmonare</span><span id="pvLab"></span></div><canvas id="pv" width="380" height="190" aria-label="Doppler pulsato della vena polmonare destra superiore"></canvas><p>Onda S dominante, smussata o invertita. L'inversione sistolica è il segno specifico. Spiegazione completa qui sotto.</p></div>
+        </div>
+        <div class="pvx" id="sd">
+          <div>
+            <h3>Cosa sono S, D e Ar</h3>
+            <dl>
+              <dt>S</dt><dd><b>Onda sistolica.</b> Sangue che entra in atrio dalle vene polmonari mentre il ventricolo è in sistole e la mitrale è chiusa. In quel momento l'atrio fa da serbatoio. Ha due componenti: S1, presto in sistole, dovuta al rilasciamento atriale dopo la contrazione; S2, in meso-telesistole, dovuta alla discesa dell'anello mitralico verso l'apice e alla spinta che arriva dal ventricolo destro attraverso il circolo polmonare. S1 e S2 si separano bene solo con FC bassa.</dd>
+              <dt>D</dt><dd><b>Onda diastolica.</b> Sangue che passa dalle vene al ventricolo attraverso l'atrio quando la mitrale si apre: l'atrio fa da condotto. Segue l'onda E mitralica, e la sua decelerazione riflette quella della E. Dipende dal riempimento ventricolare, non dal rigurgito.</dd>
+              <dt>Ar</dt><dd><b>Onda atriale retrograda.</b> Piccola onda negativa dopo la P: la contrazione atriale spinge un po' di sangue indietro nelle vene. Velocità e durata (Ar più lunga di A mitralica) crescono con la pressione telediastolica del ventricolo.</dd>
+            </dl>
+          </div>
+          <div class="patt">
+            <div><b>S dominante, S più alta di D.</b> Atrio con pressione bassa che si riempie bene in sistole. È il pattern normale nell'adulto e va contro un'IM severa. Nel giovane sano D può superare S per il rilasciamento vigoroso: non è patologico.</div>
+            <div><b>S smussata, S più bassa di D.</b> Il getto rigurgitante riempie l'atrio in sistole e ne alza la pressione (onda v): resta meno gradiente per il flusso dalle vene. Compatibile con IM moderata, ma la stessa S smussata si vede con FA (sparisce S1), pressioni atriali alte da disfunzione diastolica e atrio poco compliante.</div>
+            <div><b>S invertita.</b> La pressione atriale in sistole supera quella venosa e il flusso torna nelle vene. È il segno specifico di IM severa, ma manca in circa 4 severe su 10 (Enriquez-Sarano 1999): se c'è conferma, se manca non esclude. Le due vene possono essere discordanti in un caso su quattro circa, più spesso con la destra più alterata: campiona entrambe se puoi.</div>
+            <div style="font-size:13px;color:var(--muted)">Come registrarla: apicale quattro camere, campione PW di 3–5 mm posto 1 cm dentro la vena polmonare destra superiore, guidato dal colore, filtro di parete basso, scala ridotta.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctrl">
+        <div class="field">
+          <div class="lab"><span>Grado reale dell'IM</span></div>
+          <div class="seg seg3" id="grade">
+            <button type="button" data-g="lieve" aria-pressed="false">Lieve</button>
+            <button type="button" data-g="moderata" aria-pressed="false">Moderata</button>
+            <button type="button" data-g="severa" aria-pressed="true">Severa</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="lab"><label for="gain">Gain colore</label><output id="gainOut">50%, corretto</output></div>
+          <input id="gain" type="range" min="0" max="100" step="1" value="50">
+        </div>
+        <div class="field">
+          <div class="lab"><span>Lesione (Carpentier II)</span></div>
+          <div class="seg seg3" id="mLes">
+            <button type="button" data-v="billow" aria-pressed="false">Billowing</button>
+            <button type="button" data-v="prolapse" aria-pressed="true">Prolasso</button>
+            <button type="button" data-v="flail" aria-pressed="false">Flail</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="lab"><span>Lembo</span></div>
+          <div class="seg seg3" id="mSide">
+            <button type="button" data-v="post" aria-pressed="true">Posteriore</button>
+            <button type="button" data-v="ant" aria-pressed="false">Anteriore</button>
+            <button type="button" data-v="both" aria-pressed="false">Bilembo</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="lab"><label for="speed">Velocità animazione</label><output id="speedOut">0,50x</output></div>
+          <input id="speed" type="range" min="0.25" max="1" step="0.05" value="0.5">
+        </div>
+        <div class="field">
+          <div class="lab"><label for="nyq">Nyquist per la PISA</label><output id="nyqOut">40 cm/s</output></div>
+          <input id="nyq" type="range" min="15" max="70" step="1" value="40">
+        </div>
+        <div class="field">
+          <div class="lab"><span>Grado di ogni parametro</span></div>
+          <div class="pgrid" id="pgrid"></div>
+          <div class="cap" style="font-size:13px;color:var(--muted)">"Auto" segue il grado reale. Mettendo un parametro su un grado diverso crei un quadro discordante.</div>
+        </div>
+        <div class="field">
+          <div class="lab"><span>Sovrapposizioni</span></div>
+          <div class="toggles">
+            <button type="button" id="tColor" aria-pressed="true">Color Doppler</button>
+            <button type="button" id="tVc" aria-pressed="true">Calibro VC</button>
+            <button type="button" id="tPisa" aria-pressed="true">PISA</button>
+            <button type="button" id="tAnat" aria-pressed="false">Solo anatomia</button>
+            <button type="button" id="tPlay" aria-pressed="true">Pausa</button>
+          </div>
+        </div>
+        <div class="zoomwrap">
+          <div class="screen"><canvas id="zoom" width="340" height="230" aria-label="Zoom sulla convergenza del flusso e vena contracta"></canvas></div>
+          <div class="cap">Zoom mesosistolico sull'orifizio: convergenza con aliasing, raggio PISA e vena contracta.</div>
+        </div>
+        <table class="readout" aria-live="polite">
+          <thead><tr><th>Misura</th><th>Valore</th><th>Lettura</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="verdict" id="verdict"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="lembi">
+  <div class="wrap">
+    <h2>Prolasso, billowing e flail</h2>
+    <p class="sub">Parasternale asse lungo, zoom sulla mitrale. La linea gialla tratteggiata è il piano anulare: il calibro misura di quanto il lembo lo supera verso l'atrio. Parte senza colore, per guardare solo l'anatomia: cambia lesione e lembo e osserva dove finisce il margine libero. Accendi il getto colore per vederne la direzione.</p>
+    <div class="sim">
+      <div>
+        <div class="screen">
+          <canvas id="leaf" width="600" height="400" aria-label="Parasternale asse lungo animata con lembi mitralici"></canvas>
+          <div class="hud">PLAX · zoom mitrale<br>Fine sistole per misurare</div>
+          <div class="hud hud-r" id="leafHud">Normale</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="field">
+          <div class="lab"><span>Lesione</span></div>
+          <div class="seg" id="lesion">
+            <button type="button" data-l="normal" aria-pressed="false">Normale<small>coaptazione in ventricolo</small></button>
+            <button type="button" data-l="billow" aria-pressed="false">Billowing<small>corpo oltre l'anulus</small></button>
+            <button type="button" data-l="prolapse" aria-pressed="true">Prolasso<small>margine oltre 2 mm</small></button>
+            <button type="button" data-l="evert" aria-pressed="false">Rottura cordale<small>margine everso</small></button>
+            <button type="button" data-l="flail" aria-pressed="false">Flail<small>punta verso il tetto atriale</small></button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="lab"><span>Lembo coinvolto</span></div>
+          <div class="seg seg3" id="leafSel">
+            <button type="button" data-s="post" aria-pressed="true">Posteriore</button>
+            <button type="button" data-s="ant" aria-pressed="false">Anteriore</button>
+            <button type="button" data-s="both" aria-pressed="false">Bilembo</button>
+          </div>
+        </div>
+        <div class="toggles">
+          <button type="button" id="lColor" aria-pressed="false">Getto colore</button>
+          <button type="button" id="lPlane" aria-pressed="true">Piano anulare</button>
+          <button type="button" id="lChord" aria-pressed="true">Corde</button>
+          <button type="button" id="lVc" aria-pressed="false">Calibro VC</button>
+        </div>
+        <table class="readout">
+          <thead><tr><th>Misura in telesistole</th><th>Valore</th></tr></thead>
+          <tbody id="leafRows"></tbody>
+        </table>
+        <div class="verdict" id="leafDef"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="calcolo">
+  <div class="wrap">
+    <h2>Calcolatore di severità</h2>
+    <p class="sub">Imposta quanti dei pazienti che vedi hanno un'IM severa (probabilità pre-test), poi segna ogni parametro come presente, assente o non valutato. Ogni risultato pesa con il suo rapporto di verosimiglianza, ricavato da sensibilità e specificità dello studio citato. I parametri senza dati verificati restano esclusi finché non inserisci tu sensibilità e specificità.</p>
+    <div class="bay">
+      <div class="ctrl">
+        <div class="field">
+          <div class="lab"><label for="pre">Probabilità pre-test</label><output id="preOut">30%</output></div>
+          <input id="pre" type="range" min="5" max="80" step="1" value="30">
+        </div>
+        <div class="field">
+          <div class="lab"><span>Correzione per parametri collegati</span></div>
+          <div class="seg seg3" id="bayMode">
+            <button type="button" data-v="none" aria-pressed="false">Nessuna<small>tutti pieni</small></button>
+            <button type="button" data-v="partial" aria-pressed="true">Parziale<small>consigliata</small></button>
+            <button type="button" data-v="max" aria-pressed="false">Solo il più forte<small>uno per famiglia</small></button>
+          </div>
+        </div>
+        <div class="toggles">
+          <button type="button" id="useMri" aria-pressed="false">Usa MR Index al posto dei singoli</button>
+          <button type="button" id="bayReset" aria-pressed="false">Azzera</button>
+        </div>
+        <div class="brows" id="brows"></div>
+      </div>
+      <div class="ctrl bres">
+        <div class="eyebrow">Probabilità post-test di IM severa</div>
+        <div class="big" id="bayP">–</div>
+        <div class="pbar" aria-hidden="true"><i id="bayFill"></i><b id="bayPre"></b></div>
+        <div class="pscale"><span>0%</span><span>20%</span><span>80%</span><span>100%</span></div>
+        <div class="verdict" id="bayV"></div>
+        <table class="readout"><thead><tr><th>Parametro usato</th><th>LR</th><th>Effetto</th></tr></thead><tbody id="bayRows"></tbody></table>
+        <div class="trust" id="bayWarn"></div>
+        <div class="trust"><b>Come calcola:</b> odds post = odds pre × LR di ogni parametro. LR positivo = sens / (1 − spec); LR negativo = (1 − sens) / spec. Il metodo presuppone parametri indipendenti, ma quelli della stessa famiglia (per esempio vena polmonare, onda E e VTI, tutti conseguenze del volume rigurgitante) sono collegati. Con la correzione parziale il più informativo conta pieno, il secondo con peso 1/2, il terzo 1/3 (LR elevato al peso): è un accorgimento mio, non validato, per evitare di contare due volte la stessa informazione. L'MR Index è un'alternativa ai singoli parametri, non si somma a loro. Le soglie di lettura (sotto 20%, sopra 80%) sono una mia scelta.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="teer">
+  <div class="wrap">
+    <h2>MitraClip e M-TEER</h2>
+    <p class="sub">Indicazioni, criteri anatomici, profilo COAPT e proporzionalità del rigurgito nella secondaria. I criteri anatomici e clinici vengono dalla review di Zygouri e colleghi (J Clin Med 2025, full text su PubMed Central), le classi di raccomandazione dalla sintesi delle linee guida ESC/EACTS 2025.</p>
+    <div class="steps">
+      <div class="step"><div class="num">PRIMARIA</div><h3>Chirurgia prima</h3><ul><li>Riparazione chirurgica di scelta se il rischio è accettabile</li><li>M-TEER per sintomatici ad alto rischio o inoperabili, con anatomia adatta e decisione dell'Heart Team: classe IIa ESC/EACTS 2025 (era IIb nel 2021)</li><li>Riferimento storico: EVEREST II, getto centrale, lembi adeguati, poco calcio</li></ul></div>
+      <div class="step"><div class="num">SECONDARIA VENTRICOLARE</div><h3>Dopo la terapia</h3><ul><li>Sintomatici nonostante terapia medica ottimizzata e CRT se indicata</li><li>ESC/EACTS 2025: classe I (LOE A) in pazienti molto selezionati</li><li>COAPT positivo, MITRA-FR neutro: la differenza si spiega con la proporzionalità</li><li>RESHAPE-HF2: beneficio anche nell'IM moderata</li></ul></div>
+      <div class="step"><div class="num">SECONDARIA ATRIALE</div><h3>Forma a parte</h3><ul><li>FA, atrio grande, ventricolo di volume normale</li><li>ESC/EACTS 2025: chirurgia IIa (spesso con ablazione), TEER IIb nei pazienti ad alto rischio</li></ul></div>
+      <div class="step"><div class="num">ALTRE SITUAZIONI</div><h3>Ponte e shock</h3><ul><li>Ponte a trapianto o LVAD, o sollievo dei sintomi fuori criteri COAPT: classe IIb</li><li>Shock cardiogeno: dati osservazionali favorevoli, servono trial</li></ul></div>
+    </div>
+
+    <div class="tgrid">
+      <div class="ctrl">
+        <h3>Idoneità anatomica</h3>
+        <div class="fgrid" id="anat"></div>
+      </div>
+      <div class="ctrl">
+        <h3>Risultato anatomico</h3>
+        <div class="tl" id="anatTL"></div>
+        <table class="readout"><thead><tr><th>Criterio</th><th>Valore</th><th>Livello</th></tr></thead><tbody id="anatRows"></tbody></table>
+        <div class="trust"><b>Obiettivi a fine procedura:</b> area valvolare ≥ 1,5 cm², gradiente medio &lt; 5 mmHg, IM residua al massimo lieve (MVARC: ottimale nessuna o traccia, accettabile almeno un grado in meno). La riduzione dell'inversione in vena polmonare conferma la decompressione dell'atrio.</div>
+      </div>
+    </div>
+
+    <div class="tgrid">
+      <div class="ctrl">
+        <h3>Profilo COAPT (secondaria ventricolare)</h3>
+        <div class="fgrid" id="coapt"></div>
+      </div>
+      <div class="ctrl">
+        <h3>Esito della verifica</h3>
+        <div class="tl" id="coaptTL"></div>
+        <table class="readout"><thead><tr><th>Criterio COAPT</th><th>Valore</th><th>Esito</th></tr></thead><tbody id="coaptRows"></tbody></table>
+        <div class="trust">MITRA-FR, per confronto, includeva FEVS 15–40% e IM severa definita come EROA &gt; 20 mm² o volume &gt; 30 mL. La review avverte che non rispettare i criteri COAPT non basta da solo a escludere un paziente.</div>
+      </div>
+    </div>
+
+    <div class="tgrid">
+      <div class="ctrl">
+        <h3>Proporzionato o sproporzionato</h3>
+        <div class="fgrid" id="prop"></div>
+        <div class="trust">L'EROA "attesa" viene dall'equazione dell'orifizio: con gittata totale = VTD × FE e frazione rigurgitante del 50%, EROA = VTD × FE × 0,5 / VTI del getto. Con VTD 220–250 mL e FE 30% dà circa 0,3 cm², come nell'esempio di Grayburn.</div>
+      </div>
+      <div class="ctrl">
+        <h3>Risultato</h3>
+        <div class="tl" id="propTL"></div>
+        <table class="readout"><thead><tr><th>Indice</th><th>Valore</th><th>Soglia</th></tr></thead><tbody id="propRows"></tbody></table>
+        <div class="chartbox"><svg id="propChart" viewBox="0 0 420 260" role="img" aria-label="EROA in funzione del volume telediastolico"></svg></div>
+        <div class="trust">I due riquadri sono gli esempi dell'abstract di Grayburn 2019 (VTD 220–250 mL con EROA circa 30 mm²; VTD 160–200 mL con EROA 30–40 mm²). La curva è l'EROA attesa per una frazione rigurgitante del 50% alla FE inserita. Un punto sopra la curva indica un'IM più grande di quanto il ventricolo spieghi (sproporzionata, più probabile beneficio dalla TEER); sotto o sulla curva, proporzionata (prima la terapia che riduce i volumi).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="atlante">
+  <div class="wrap">
+    <h2>Atlante dei parametri</h2>
+    <p class="sub">Per ogni misura riporto solo quello che ho potuto leggere nell'abstract su PubMed. Dove lo studio non dà sensibilità e specificità lo scrivo, invece di inventare un numero. Il giudizio di affidabilità è mio e lo puoi contestare. La tabella completa, con tutti gli studi trovati e l'atrio, è nel <a href="accuratezza.html" target="_blank" rel="noopener">foglio di accuratezza</a>.</p>
+    <div class="filters" id="filters">
+      <button type="button" class="btn" data-f="all" aria-pressed="true">Tutti</button>
+      <button type="button" class="btn" data-f="quant" aria-pressed="false">Quantitativi</button>
+      <button type="button" class="btn" data-f="semi" aria-pressed="false">Semiquantitativi</button>
+      <button type="button" class="btn" data-f="qual" aria-pressed="false">Qualitativi e di supporto</button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </div>
+</section>
+
+<section id="trucchi">
+  <div class="wrap">
+    <h2>Trappole e trucchi</h2>
+    <p class="sub">Quello che sbaglia più spesso chi misura, raccolto per tecnica. Quasi tutto viene dalle raccomandazioni ASE 2017 ed EACVI 2022 e dall'esperienza di laboratorio condivisa; dove un punto si appoggia a uno studio specifico lo cito, dove è solo prassi lo dico.</p>
+    <div class="legend"><span><span class="tag trap">Trappola</span> errore che sposta il grading</span><span><span class="tag tip">Trucco</span> accorgimento di acquisizione o di lettura</span></div>
+    <div class="pits">
+
+      <div class="pit"><h3>Prima di misurare</h3><ul>
+        <li><span class="tag tip">Trucco</span><span>Misura la pressione arteriosa durante l'esame e scrivila nel referto. Il getto e la PISA dipendono dal gradiente VS-AS: un iperteso a 170 mmHg sembra peggiore di quanto sia.</span></li>
+        <li><span class="tag trap">Trappola</span><span>La sedazione e l'anestesia scaricano il ventricolo e riducono il getto. Pieper 1996 ha trovato in TEE sotto anestesia un cut-off di area del getto più basso che nei pazienti svegli.</span></li>
+        <li><span class="tag trap">Trappola</span><span>In FA ogni battito è diverso. Media almeno 5 cicli, o scegli battiti con RR simile al precedente.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Definisci prima il meccanismo e il segmento: la direzione del getto ti dice quale lembo è malato (getto opposto al lembo che prolassa) e ti avvisa se la PISA sarà non emisferica.</span></li>
+      </ul><div class="src">Fonti: ASE 2017, EACVI 2022, Pieper 1996.</div></div>
+
+      <div class="pit"><h3>Getto colore</h3><ul>
+        <li><span class="tag trap">Trappola</span><span>Effetto Coanda: il getto eccentrico che abbraccia la parete perde energia e appare piccolo. Un getto eccentrico olosistolico a parete va considerato potenzialmente severo, non misurato in area.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Nyquist basso o guadagno alto allargano il getto. Lavora con Nyquist 50–70 cm/s e guadagno appena sotto la comparsa del rumore.</span></li>
+        <li><span class="tag trap">Trappola</span><span>I getti centrali trascinano sangue (entrainment) e sovrastimano, soprattutto con pressioni alte.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Settore stretto e profondità ridotta alzano il frame rate: con meno di 15–20 fps il getto in telesistole si perde.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Usa l'area solo agli estremi: getto minuscolo e centrale per escludere, getto che riempie l'atrio fino alle vene per sospettare. In mezzo non serve.</span></li>
+      </ul><div class="src">Fonti: ASE 2017, EACVI 2022; Helmcke 1987, Hall 1997 per i limiti dell'area.</div></div>
+
+      <div class="pit"><h3>Vena contracta</h3><ul>
+        <li><span class="tag tip">Trucco</span><span>Misurala in parasternale asse lungo quando possibile: lì la VC è misurata con la risoluzione assiale, che è migliore di quella laterale delle apicali.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Non usare la due camere bicommissurale: taglia l'orifizio lungo la linea di coaptazione e lo allarga artificialmente.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Zoom, settore stretto, Nyquist 50–70. Cerca i tre pezzi insieme: convergenza sopra, collo stretto, getto che si allarga sotto. Misura il collo, perpendicolare all'asse del getto.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Un millimetro di errore su 5 mm è il 20%. Media almeno 3 battiti.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Con più getti le VC non si sommano. Serve il 3D o un altro metodo.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Nell'orifizio ellittico una VC 2D in un solo piano sottostima o sovrastima a seconda del taglio. Lì l'area 3D della VC aiuta.</span></li>
+      </ul><div class="src">Fonti: ASE 2017, EACVI 2022, Hall 1997, Zeng 2011.</div></div>
+
+      <div class="pit"><h3>PISA</h3><ul>
+        <li><span class="tag tip">Trucco</span><span>Sposta la linea di base nella direzione del getto (verso il basso in apicale) fino a Nyquist 30–40 cm/s: l'emisfero si ingrandisce e il raggio diventa misurabile con meno errore relativo.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Il raggio entra al quadrato: 1 mm di errore su 8 mm sposta l'EROA di circa il 25%. Zoom spinto e almeno 3 misure.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Il punto più difficile è l'orifizio, non il bordo di aliasing. Fai scorrere il cine con e senza colore per vedere dove si chiudono i lembi.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Formula rapida, regola pratica nota: con Nyquist 40 cm/s e Vmax del getto intorno a 5 m/s, EROA in cm² ≈ r²/2 con r in cm. Un raggio di 0,9 cm dà circa 0,40 cm². Usala per controllare, non per refertare.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Nel flail e nei getti eccentrici la convergenza è emiellittica o vincolata dalla parete. Il calcolo emisferico sbaglia; esiste la correzione per l'angolo (α/180), ma è poco riproducibile.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Nel prolasso telesistolico il raggio è massimo in un solo fotogramma. Moltiplicato per una VTI intera sovrastima il volume. Usa PISA seriata o il metodo volumetrico.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Convergenza non ottimale nel prolasso: Enriquez-Sarano 1995 ha visto EROA quasi doppie (137 contro 84 mm²) in questi casi.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Prendi Vmax e VTI dal CW nello stesso ciclo, o almeno in cicli con lo stesso RR, e controlla che la Vmax sia coerente con la pressione arteriosa.</span></li>
+      </ul><div class="src">Fonti: ASE 2017, EACVI 2022, Enriquez-Sarano 1995. La formula r²/2 è prassi diffusa, non l'ho verificata su PubMed in questa ricerca.</div></div>
+
+      <div class="pit"><h3>Metodo volumetrico</h3><ul>
+        <li><span class="tag trap">Trappola</span><span>Il diametro del tratto di efflusso entra al quadrato: 2 mm di errore su 20 mm cambiano la gittata di circa il 20%.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Con buona finestra, gittata totale da volumi VS biplani o 3D meno gittata anterograda in LVOT. Il 2D sottostima i volumi: rischi di sottostimare il rigurgito.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Con insufficienza aortica significativa il conto LVOT non rappresenta più la sola gittata anterograda sistemica. Usa il metodo con cautela.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Se PISA e volumetrico non concordano oltre il 20–30%, non scegliere quello che ti piace: è il momento della RM.</span></li>
+      </ul><div class="src">Fonti: ASE 2017, EACVI 2022, Uretsky 2015.</div></div>
+
+      <div class="pit"><h3>Doppler pulsato e continuo</h3><ul>
+        <li><span class="tag tip">Trucco</span><span>Vena polmonare: campione 1 cm dentro la vena polmonare destra superiore in apicale quattro camere, filtro basso, scala ridotta. Se puoi, guarda anche la sinistra.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Le due vene possono dare pattern diversi: discordanza nel 24% in Klein 1991 e nel 22% in Mark 1995, quasi sempre con la destra più alterata. Mark 1995 e Galjee 1995 (RM) non hanno trovato che dipenda dalla direzione del getto: non dare per scontato che un getto eccentrico "inverta solo la sua vena".</span></li>
+        <li><span class="tag trap">Trappola</span><span>FA, pressioni atriali elevate e disfunzione VS smussano l'onda S senza IM severa. Solo l'inversione franca ha peso.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Onda E: campione sulla punta dei lembi. Un pattern A dominante in un paziente anziano è l'argomento più forte contro la severa (Thomas 1998).</span></li>
+        <li><span class="tag tip">Trucco</span><span>CW: confronta a parità di guadagno la densità del getto con quella dell'afflusso diastolico nello stesso tracciato. Se il getto è più denso dell'afflusso, il volume è importante.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Un CW debole può essere solo disallineato. Cerca il segnale da più finestre prima di chiamarlo lieve.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Profilo triangolare con picco precoce significa onda v alta. Nel prolasso telesistolico il segnale inizia a metà sistole: è il segno che ti avvisa della trappola PISA.</span></li>
+      </ul><div class="src">Fonti: Klein 1991, Eren 2001, Thomas 1998, ASE 2017.</div></div>
+
+      <div class="pit"><h3>Anatomia del prolasso</h3><ul>
+        <li><span class="tag tip">Trucco</span><span>Parasternale asse lungo: A2 e P2. Due camere bicommissurale: P3, A2, P1 da sinistra a destra. Asse corto alla valvola: tutti gli scallop, per localizzare. Il TEE 3D en face in vista chirurgica toglie ogni dubbio.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Il prolasso si diagnostica in asse lungo, non in quattro camere: l'anello a sella fa sembrare prolassanti lembi normali nelle apicali.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Nel Barlow cerca la disgiunzione dell'anello mitralico (MAD) e il segno di Pickelhaube sul Doppler tissutale laterale: profilo aritmico da segnalare.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Corde rotte: il segmento flail punta verso il tetto atriale con la punta libera e un frammento di corda mobile. Basta questo per chiamarla severa se il getto è coerente.</span></li>
+      </ul><div class="src">Fonti: prassi e raccomandazioni ASE/EACVI. Le corrispondenze tra proiezioni e scallop variano con l'angolazione: verificale sul tuo paziente.</div></div>
+
+      <div class="pit"><h3>Conseguenze e timing</h3><ul>
+        <li><span class="tag trap">Trappola</span><span>Nell'IM severa una FEVS del 60% è già disfunzione: il ventricolo eietta anche in atrio. Non scrivere "funzione conservata" sopra il 55% senza commento.</span></li>
+        <li><span class="tag trap">Trappola</span><span>Pochi millimetri decidono la classe di indicazione (DTSVS 38 contro 40 mm). Misura in parasternale con lo stesso metodo, sullo stesso apparecchio al follow-up, e indicizza.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Volume atriale biplano indicizzato, non solo diametro: dal 2025 l'atrio ≥ 60 mL/m² entra tra i criteri per la classe I nell'asintomatico.</span></li>
+        <li><span class="tag tip">Trucco</span><span>Asintomatico con IM severa e sintomi dubbi: ecostress con PAPs e grado dell'IM sotto sforzo. Nel tuo laboratorio è l'esame che chiarisce i discordanti.</span></li>
+      </ul><div class="src">Fonti: ESC/EACTS 2025 tramite le sintesi citate, ASE 2017. Le soglie da sforzo non le ho riverificate.</div></div>
+
+    </div>
+  </div>
+</section>
+
+<section id="algoritmo">
+  <div class="wrap">
+    <h2>Approccio integrato</h2>
+    <p class="sub">Nessun singolo parametro basta. Le raccomandazioni ASE 2017 ed EACVI 2022 chiedono di partire dal meccanismo, cercare i segni specifici, quantificare quando non sono concordi e passare a TEE o RM se resta il dubbio.</p>
+    <div class="steps">
+      <div class="step"><div class="num">PASSO 1</div><h3>Meccanismo</h3><ul><li>Carpentier I, II (prolasso, flail), IIIa</li><li>Segmento coinvolto: la direzione del getto è opposta al lembo malato</li><li>Il flail con rottura di corda è già un segno di severità</li></ul></div>
+      <div class="step"><div class="num">PASSO 2</div><h3>Segni specifici</h3><ul><li>Severa: VC ≥ 7 mm, PISA ampia (raggio ≥ 10 mm a Nyquist 30–40), inversione S in vena polmonare, getto centrale &gt; 50% dell'atrio</li><li>Lieve: VC &lt; 3 mm, getto piccolo, S dominante, pattern A-dominante</li></ul></div>
+      <div class="step"><div class="num">PASSO 3</div><h3>Quantificazione</h3><ul><li>EROA, volume e frazione rigurgitante</li><li>Concordanza tra PISA e metodo volumetrico</li><li>Nel prolasso telesistolico pesa di più il volume rigurgitante dell'EROA di un singolo fotogramma</li></ul></div>
+      <div class="step"><div class="num">PASSO 4</div><h3>Se discordante</h3><ul><li>TEE, meglio 3D, per anatomia e area della VC</li><li>RM cardiaca per volume e frazione rigurgitante</li><li>Ecostress se sintomi e quadro a riposo non tornano</li></ul></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="grade">
+        <thead><tr><th>Parametro</th><th>Lieve</th><th>Intermedio</th><th>Severo</th></tr></thead>
+        <tbody>
+          <tr><td>Vena contracta</td><td>&lt; 3 mm</td><td>3–6,9 mm</td><td>≥ 7 mm (≥ 8 mm se biplana)</td></tr>
+          <tr><td>EROA (PISA)</td><td>&lt; 0,20 cm²</td><td>0,20–0,39 cm²</td><td>≥ 0,40 cm²</td></tr>
+          <tr><td>Volume rigurgitante</td><td>&lt; 30 mL</td><td>30–59 mL</td><td>≥ 60 mL</td></tr>
+          <tr><td>Frazione rigurgitante</td><td>&lt; 30%</td><td>30–49%</td><td>≥ 50%</td></tr>
+          <tr><td>Getto colore</td><td>piccolo, centrale, &lt; 20% AS</td><td>variabile</td><td>centrale &gt; 50% AS o eccentrico olosistolico a parete</td></tr>
+          <tr><td>Vena polmonare</td><td>S dominante</td><td>S smussata</td><td>inversione sistolica</td></tr>
+          <tr><td>Afflusso mitralico</td><td>A dominante</td><td>variabile</td><td>E &gt; 1,2 m/s</td></tr>
+          <tr><td>VTI mitrale / VTI aortico</td><td>&lt; 1,0</td><td>1,0–1,4</td><td>&gt; 1,4</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="twocol">
+      <div class="box"><h3>Quando operare: ESC/EACTS 2025</h3><ul>
+        <li>IM primitiva severa sintomatica: intervento, riparazione chirurgica se durevole</li>
+        <li>Asintomatico con disfunzione VS: FEVS ≤ 60%, DTSVS ≥ 40 mm o DTSVS indicizzato ≥ 20 mm/m²</li>
+        <li>Asintomatico senza disfunzione e basso rischio: classe I se presenti almeno 3 tra fibrillazione atriale, PAPs &gt; 50 mmHg, atrio sinistro ≥ 60 mL/m² o ≥ 55 mm, IT moderata o severa. Con meno di 3 criteri classe IIa</li>
+      </ul></div>
+      <div class="box"><h3>Trappole classiche</h3><ul>
+        <li>Effetto Coanda: il getto eccentrico che abbraccia la parete sembra piccolo</li>
+        <li>PISA non emisferica nel flail e nei getti eccentrici</li>
+        <li>Prolasso telesistolico: EROA massima alta, volume modesto</li>
+        <li>Guadagno colore e Nyquist cambiano l'area del getto</li>
+        <li>FA, disfunzione diastolica e pressioni atriali alterano onda E e vene polmonari</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="casi">
+  <div class="wrap">
+    <h2>Cinque casi per allenarsi</h2>
+    <p class="sub">Scegli una risposta. Ogni caso ha un pulsante che lo carica nel simulatore.</p>
+    <div class="cases" id="caseList"></div>
+  </div>
+</section>
+
+<section id="fonti">
+  <div class="wrap">
+    <h2>Fonti</h2>
+    <p class="sub">Tutti i dati numerici degli studi sono stati letti negli abstract recuperati da PubMed. Le soglie di grading vengono dalle raccomandazioni ASE 2017 ed EACVI 2022, che non ho riletto in full text: vanno verificate lì.</p>
+    <ol class="refs" id="refs"></ol>
+    <div class="limits">
+      <h3>Limiti di questa pagina</h3>
+      <p>Molti valori di sensibilità e specificità vengono da studi monocentrici degli anni Novanta, con campioni tra 37 e 147 pazienti, popolazioni miste primitive e secondarie e uno standard di riferimento spesso ecocardiografico. Questo gonfia l'accuratezza apparente perché il test e il riferimento condividono gli stessi errori.</p>
+      <p>Il simulatore usa geometria semplificata: orifizio circolare, emisfero ideale, gittata anterograda fissa a 60 mL, VTI del getto 150 cm. Serve per capire le relazioni tra le misure, non per tarare un referto.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">MitraLab · strumento didattico. Non sostituisce linee guida, giudizio clinico o refertazione.</div></footer>
+
+<script>
+(function(){
+"use strict";
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (x,d=1)=>x.toFixed(d).replace('.',',');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+const LES_LABEL={billow:'Billowing',prolapse:'Prolasso',flail:'Flail'};
+const SIDE_LABEL={post:'lembo posteriore',ant:'lembo anteriore',both:'bilembo'};
+function mechOf(s){
+  const les=s.les, side=s.side, flail=les==='flail';
+  let dir,ecc,late;
+  if(les==='billow'){dir='central';ecc=false;late=true;}
+  else if(side==='both'){dir=flail?'sept':'central';ecc=flail;late=!flail;}
+  else {dir=side==='post'?'sept':'lat';ecc=true;late=false;}
+  if(s.holoCentral){dir='central';ecc=false;late=false;}
+  const label=LES_LABEL[les]+', '+SIDE_LABEL[side]+(flail&&side==='both'?' (flail del posteriore)':'');
+  return {les,side,dir,ecc,late,flail,label};
+}
+const EROA_G={lieve:0.12,moderata:0.28,severa:0.5};
+const VC_G={lieve:0.25,moderata:0.5,severa:0.8};
+const PV_G={lieve:[0.62,0.42],moderata:[0.22,0.6],severa:[-0.32,0.75]};
+const EA_G={lieve:[0.62,0.86],moderata:[0.98,0.62],severa:[1.38,0.6]};
+const LA_G={lieve:32,moderata:46,severa:66};
+const OV0={eroa:'auto',vc:'auto',pv:'auto',ea:'auto',la:'auto'};
+const S={grade:'severa',les:'prolapse',side:'post',ov:Object.assign({},OV0),nyq:40,gain:50,color:true,vc:true,pisa:true,anat:false,playing:!reduced,hr:65,speed:0.5};
+const gOf=k=>S.ov[k]==='auto'?S.grade:S.ov[k];
+
+function derive(s){
+  const m=mechOf(s);
+  const Vmax=500, vti=150, fwd=60;
+  const eroa=EROA_G[gOf('eroa')];
+  const tf=m.late?0.5:1;
+  const rvol=eroa*vti*tf;
+  const rf=rvol/(rvol+fwd)*100;
+  const vc=VC_G[gOf('vc')];
+  const r=Math.sqrt(eroa*Vmax/(2*Math.PI*s.nyq));
+  let jet=Math.min(85,6+95*eroa*(m.late?0.8:1)); if(m.ecc) jet*=0.5;
+  const pv=PV_G[gOf('pv')], ea=EA_G[gOf('ea')];
+  const ratio=((fwd+rvol)/3.8)/(fwd/3.14);
+  const cwI=Math.min(1,0.22+rvol/75);
+  const lav=LA_G[gOf('la')];
+  const lvesd=29+16*rvol/vti;
+  // effetto del gain: getto colore e VC "fioriscono", la PISA no
+  const gk=0.6+0.8*s.gain/100+(s.gain>65?(s.gain-65)/35*0.6:0);
+  const d={m,rvol,rf,vc,r,jet,E:ea[0],A:ea[1],pvS:pv[0],pvD:pv[1],ratio,cwI,lav,lvesd,eroa,eff:rvol/vti,Vmax,gk};
+  d.jetMeas=Math.min(92,jet*gk*gk);
+  d.vcMeas=vc*(0.82+0.36*s.gain/100);
+  return d;
+}
+
+/* ---------- valutazione per parametro ---------- */
+const OK=['Lieve','c-ok'],MID=['Intermedio','c-mid'],SEV=['Severa','c-sev'];
+function grades(d,s){
+  const g={};
+  const vcmm=d.vcMeas*10;
+  g.vc=vcmm<3?OK:vcmm>=7?SEV:MID;
+  g.eroa=d.eroa<0.2?OK:d.eroa>=0.4?SEV:MID;
+  g.rvol=d.rvol<30?OK:d.rvol>=60?SEV:MID;
+  g.rf=d.rf<30?OK:d.rf>=50?SEV:MID;
+  const nyqOk=s.nyq>=30&&s.nyq<=40;
+  g.pisa=!nyqOk?['Nyquist fuori 30–40','c-na']:d.r*10>=9.95?['Ampia, severa','c-sev']:d.r<0.4?['Piccola','c-ok']:MID;
+  g.jet=d.m.ecc?['Eccentrico, non misurare','c-mid']:d.jetMeas<20?OK:d.jetMeas>50?SEV:MID;
+  g.la=d.lav<=34?['Normale, contro severa cronica','c-ok']:d.lav>=60?['≥ 60, criterio ESC','c-sev']:['Dilatato','c-mid'];
+  g.ea=d.E<d.A?['A dominante','c-ok']:['E dominante','c-mid'];
+  g.E=d.E>=1.2?['Supporta severa','c-sev']:d.E<d.A?['A dominante, contro','c-ok']:['Non dirimente','c-na'];
+  g.pv=d.pvS<0?['Inversione S','c-sev']:d.pvS<d.pvD?['S smussata','c-mid']:['S dominante','c-ok'];
+  g.ratio=d.ratio>1.4?SEV:d.ratio<1?OK:MID;
+  g.cw=d.m.late?['Telesistolico','c-mid']:d.cwI>0.9?['Denso, triangolare','c-sev']:d.cwI<0.5?['Debole','c-ok']:['Denso','c-mid'];
+  g.flail=d.m.flail?['Segno specifico','c-sev']:['Assente','c-na'];
+  return g;
+}
+function pvText(d){return d.pvS<0?'S invertita':d.pvS<d.pvD?'S < D':'S > D';}
+
+function renderReadout(){
+  const d=derive(S), g=grades(d,S);
+  const rows=[
+    ['vc','Vena contracta misurata',fmt(d.vcMeas*10)+' mm',g.vc],
+    ['pisa','Raggio PISA',fmt(d.r*10)+' mm',g.pisa],
+    ['eroa','EROA',fmt(d.eroa,2)+' cm²',g.eroa],
+    ['rvol','Volume rigurgitante',Math.round(d.rvol)+' mL',g.rvol],
+    ['rf','Frazione rigurgitante',Math.round(d.rf)+'%',g.rf],
+    ['jet','Area getto / AS misurata',Math.round(d.jetMeas)+'%',g.jet],
+    ['pv','Vena polmonare',pvText(d),g.pv],
+    ['E','Onda E',fmt(d.E,2)+' m/s',g.E],
+    ['ea','Rapporto E/A',fmt(d.E/d.A,2),g.ea],
+    ['la','Atrio sinistro',Math.round(d.lav)+' mL/m²',g.la],
+    ['ratio','VTI mitr / VTI Ao',fmt(d.ratio,2),g.ratio],
+    ['cw','CW getto',d.m.late?'tardivo':Math.round(d.cwI*100)+'% densità',g.cw],
+    ['flail','Flail',d.m.flail?'presente':'no',g.flail]
+  ];
+  document.getElementById('rows').innerHTML=rows.map(r=>`<tr data-k="${r[0]}"><td>${r[1]}</td><td class="v">${r[2]}</td><td><span class="chip ${r[3][1]}">${r[3][0]}</span></td></tr>`).join('');
+  // lettura integrata
+  const spec=[];
+  if(d.m.flail) spec.push('flail');
+  if(d.vcMeas*10>=7) spec.push('VC ≥ 7 mm');
+  if(S.nyq>=30&&S.nyq<=40&&d.r*10>=9.95) spec.push('PISA ampia');
+  if(d.pvS<0) spec.push('inversione S');
+  const quantSev=[d.eroa>=0.4,d.rvol>=60,d.rf>=50].filter(Boolean).length;
+  let v;
+  if(spec.length>=2&&quantSev>=2) v=['Severa, concordante','Segni specifici ('+spec.join(', ')+') e quantificazione allineati.'];
+  else if(spec.length>=1&&quantSev<=1) v=['Discordante','Segni di severità ('+spec.join(', ')+') ma volume e frazione non severi. Pensa al prolasso telesistolico o a una PISA non emisferica, poi integra con TEE 3D o RM.'];
+  else if(spec.length===0&&quantSev===0&&d.vcMeas*10<3) v=['Lieve','Nessun segno specifico di severità, quantificazione nei range lievi.'];
+  else if(spec.length===0&&quantSev>=2) v=['Probabilmente severa','La quantificazione dice severa ma mancano segni specifici. Ricontrolla le misure prima di concludere.'];
+  else v=['Intermedia','Parametri in zona grigia: quantifica con due metodi e valuta RM se cambia la gestione.'];
+  const extra=[];
+  if(S.gain>=70) extra.push('Gain alto: getto e VC appaiono più grandi del vero, la PISA no.');
+  if(S.gain<=25) extra.push('Gain basso: getto e VC si riducono e puoi sottostimare.');
+  if(d.lav<=34&&S.grade==='severa') extra.push('IM severa con atrio normale: pensa a una forma acuta.');
+  if(Object.values(S.ov).some(v=>v!=='auto')) extra.push('Alcuni parametri sono su un grado diverso da quello reale: la lettura integrata deve pesarli contro gli altri.');
+  if(S.les==='billow'&&S.grade==='severa') extra.push('Il billowing da solo raramente dà un\'IM severa: se i numeri lo dicono, cerca un prolasso o un flail associato.');
+  document.getElementById('verdict').innerHTML=`<b>${v[0]}.</b> ${v[1]}`+(extra.length?`<br><span style="color:var(--muted)">${extra.join(' ')}</span>`:'');
+  const gl=S.gain>=70?'alto':S.gain<=25?'basso':'corretto';
+  document.getElementById('gainOut').textContent=S.gain+'%, '+gl;
+  document.getElementById('nyqOut').textContent=S.nyq+' cm/s';
+  document.getElementById('hudNyq').textContent=S.nyq;
+  document.getElementById('hudMech').textContent=d.m.label;
+  document.getElementById('cwLab').textContent='Vmax 5,0 m/s';
+  document.getElementById('pwLab').textContent='E '+fmt(d.E,2)+' · A '+fmt(d.A,2)+' m/s';
+  document.getElementById('pvLab').textContent='S '+fmt(d.pvS,2)+' · D '+fmt(d.pvD,2)+' m/s';
+}
+
+/* ---------- canvas utilities ---------- */
+function setupCanvas(c,w,h){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  c.width=w*dpr;c.height=h*dpr;
+  const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+function rng(seed){let x=seed>>>0||1;return ()=>{x^=x<<13;x>>>=0;x^=x>>17;x^=x<<5;x>>>=0;return x/4294967296;};}
+function noiseCanvas(w,h,lo,hi,seed){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const x=c.getContext('2d');const im=x.createImageData(w,h);const r=rng(seed);
+  for(let i=0;i<w*h;i++){const v=lo+(hi-lo)*Math.pow(r(),2.2);im.data[i*4]=v;im.data[i*4+1]=v*1.02;im.data[i*4+2]=v*1.06;im.data[i*4+3]=255;}
+  x.putImageData(im,0,0);return c;
+}
+
+/* ---------- ECG sintetico ---------- */
+function g(p,c,w,a){let dp=p-c;if(dp>0.5)dp-=1;if(dp<-0.5)dp+=1;return a*Math.exp(-(dp*dp)/(2*w*w));}
+function ecg(p){return g(p,0.80,0.018,0.13)+g(p,0.035,0.006,-0.12)+g(p,0.05,0.007,1)+g(p,0.066,0.007,-0.28)+g(p,0.33,0.04,0.28);}
+function drawEcg(ctx,x0,y0,w,h,cycles,cursor){
+  ctx.save();ctx.strokeStyle='#4fd18b';ctx.lineWidth=1.2;ctx.beginPath();
+  for(let x=0;x<=w;x++){const p=(x/w*cycles)%1;const y=y0-ecg(p)*h;x?ctx.lineTo(x0+x,y):ctx.moveTo(x0+x,y);}
+  ctx.stroke();
+  if(cursor!=null){ctx.fillStyle='#4fd18b';ctx.beginPath();ctx.arc(x0+cursor*w,y0-ecg((cursor*cycles)%1)*h,2.6,0,7);ctx.fill();}
+  ctx.restore();
+}
+
+/* ---------- vista apicale 4 camere ---------- */
+const W=560,H=500;
+const mainC=document.getElementById('main');let mctx;
+const APEX={x:280,y:24}, SR=470, SA=42*Math.PI/180;
+let darkPat,tissPat;
+const HS={x:298,y:300}, HL={x:404,y:300}, CO={x:352,y:306};
+
+function sectorPath(ctx,r0,r1,a0,a1){
+  ctx.beginPath();
+  ctx.arc(APEX.x,APEX.y,r1,Math.PI/2+a1,Math.PI/2+a0,true);
+  ctx.arc(APEX.x,APEX.y,r0,Math.PI/2+a0,Math.PI/2+a1,false);
+  ctx.closePath();
+}
+function sysAmount(p){ // 0 diastole, 1 sistole (lembi chiusi)
+  if(p<0.03) return 0;
+  if(p<0.06) return (p-0.03)/0.03;
+  if(p<0.47) return 1;
+  if(p<0.52) return 1-(p-0.47)/0.05;
+  return 0;
+}
+function mrOn(p,m){const a=m.late?0.27:0.09,b=0.46;if(p<a||p>b)return 0;const u=(p-a)/(b-a);return Math.min(1,u*6)*Math.min(1,(1-u)*10);}
+function bez(p0,p1,p2,p3,t){const u=1-t;return {x:u*u*u*p0.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t*t*t*p3.x,y:u*u*u*p0.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t*t*t*p3.y};}
+
+function leaflets(p,d){
+  const s=sysAmount(p);const m=d.m;
+  const aOpen={x:318,y:246}, pOpen={x:392,y:262};
+  let aTip={x:351,y:296}, pTip={x:353,y:296};
+  let aCtl={x:325,y:293}, pCtl={x:380,y:294};
+  const prog=m.late?clamp((p-0.2)/0.12,0,1):1;
+  const affA=m.side!=='post', affP=m.side!=='ant';
+  if(m.les==='billow'){
+    if(affA) aCtl={x:318,y:300+30*prog};
+    if(affP) pCtl={x:388,y:300+30*prog};
+  }else if(m.les==='prolapse'){
+    if(affA){aCtl={x:318,y:300+30*prog};aTip={x:349,y:296+16*prog};}
+    if(affP){pCtl={x:388,y:300+30*prog};pTip={x:355,y:296+16*prog};}
+  }else{
+    if(m.side==='ant'){aCtl={x:312,y:322};aTip={x:368,y:352};pTip={x:356,y:298};}
+    else{pCtl={x:396,y:322};pTip={x:338,y:352};aTip={x:348,y:298};
+      if(m.side==='both'){aCtl={x:318,y:328};aTip={x:346,y:310};}}
+  }
+  const A={tip:{x:lerp(aOpen.x,aTip.x,s),y:lerp(aOpen.y,aTip.y,s)},ctl:{x:lerp(312,aCtl.x,s),y:lerp(272,aCtl.y,s)}};
+  const P={tip:{x:lerp(pOpen.x,pTip.x,s),y:lerp(pOpen.y,pTip.y,s)},ctl:{x:lerp(398,pCtl.x,s),y:lerp(282,pCtl.y,s)}};
+  let O={x:(aTip.x+pTip.x)/2,y:Math.max(300,Math.min(aTip.y,pTip.y)+2)};
+  if(m.flail) O=m.side==='ant'?{x:360,y:318}:{x:346,y:318};
+  return {A,P,O,s};
+}
+function jetPath(d,O,laK){
+  const by=305+150*laK;
+  if(d.m.dir==='sept') return [O,{x:O.x-30,y:O.y+38},{x:291,y:O.y+90},{x:300,y:by}];
+  if(d.m.dir==='lat') return [O,{x:O.x+34,y:O.y+38},{x:350+68*laK,y:O.y+90},{x:350+52*laK,y:by}];
+  return [O,{x:O.x,y:O.y+50},{x:O.x+4,y:O.y+100},{x:O.x,y:by-6}];
+}
+
+function drawMain(p){
+  const ctx=mctx, d=derive(S);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#05080b';ctx.fillRect(0,0,W,H);
+  ctx.save();
+  sectorPath(ctx,6,SR,-SA,SA);ctx.clip();
+  ctx.fillStyle=darkPat;ctx.fillRect(0,0,W,H);
+  const s=sysAmount(p);
+  const laK=0.82+0.0075*(d.lav-28);
+  const lvK=1+0.004*(d.lvesd-29);
+  // tessuto
+  ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle=tissPat;
+  // parete laterale VS
+  const inX=-9*s;
+  ctx.lineWidth=15+3*s;ctx.beginPath();ctx.moveTo(APEX.x+2,52);
+  ctx.bezierCurveTo(400*lvK+inX,96,436*lvK+inX,236,HL.x,HL.y);ctx.stroke();
+  // setto IV
+  ctx.lineWidth=17+3*s;ctx.beginPath();ctx.moveTo(APEX.x,52);ctx.bezierCurveTo(282,140,286+2*s,230,290,302);ctx.stroke();
+  // parete libera VD
+  ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(APEX.x-4,54);ctx.bezierCurveTo(176,108,140+6*s,236,166,300);ctx.stroke();
+  // atri
+  const laRx=64*laK, laRy=76*laK, laCy=303+laRy*0.95;
+  ctx.lineWidth=6;
+  ctx.beginPath();ctx.ellipse(350,laCy,laRx,laRy,0,Math.PI*1.08,Math.PI*1.92,true);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(214,384,58,68,0,Math.PI*1.1,Math.PI*1.9,true);ctx.stroke();
+  // setto interatriale
+  ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(289,304);ctx.quadraticCurveTo(284,380,288,laCy+laRy*0.7);ctx.stroke();
+  // anelli
+  ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(HS.x-6,HS.y);ctx.lineTo(HS.x+2,HS.y);ctx.moveTo(HL.x-2,HL.y);ctx.lineTo(HL.x+8,HL.y);ctx.stroke();
+  // tricuspide
+  ctx.lineWidth=3;ctx.strokeStyle='#c9d3d9';
+  const tOpen=1-s;
+  ctx.beginPath();ctx.moveTo(278,300);ctx.lineTo(lerp(226,250,tOpen),lerp(304,262,tOpen));ctx.moveTo(170,300);ctx.lineTo(lerp(222,196,tOpen),lerp(304,262,tOpen));ctx.stroke();
+  // lembi mitralici
+  const L=leaflets(p,d);
+  ctx.strokeStyle='#e4ebef';ctx.lineWidth=d.m.side==='both'?5:3.4;
+  ctx.beginPath();ctx.moveTo(HS.x,HS.y);ctx.quadraticCurveTo(L.A.ctl.x,L.A.ctl.y,L.A.tip.x,L.A.tip.y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(HL.x,HL.y);ctx.quadraticCurveTo(L.P.ctl.x,L.P.ctl.y,L.P.tip.x,L.P.tip.y);ctx.stroke();
+  if(d.m.flail&&L.s>0.5){const T=d.m.side==='ant'?L.A.tip:L.P.tip;ctx.lineWidth=1.4;ctx.strokeStyle='#aeb9c0';ctx.beginPath();ctx.moveTo(T.x,T.y);ctx.quadraticCurveTo(T.x-10,T.y+14,T.x+4,T.y+24);ctx.stroke();}
+  // solo anatomia: piano anulare e spostamento dei lembi
+  if(S.anat){
+    const cal=getCss('--caliper');
+    ctx.strokeStyle=cal;ctx.lineWidth=1.2;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(HS.x-24,HS.y);ctx.lineTo(HL.x+24,HL.y);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=cal;ctx.font='11px "JetBrains Mono",monospace';ctx.fillText('piano anulare',HL.x+28,HL.y+4);
+    if(L.s>0.6){
+      let best=null;
+      [[HS,L.A],[HL,L.P]].forEach(([h,Q])=>{for(let u=0;u<=1.0001;u+=0.02){const v=1-u;const q={x:v*v*h.x+2*v*u*Q.ctl.x+u*u*Q.tip.x,y:v*v*h.y+2*v*u*Q.ctl.y+u*u*Q.tip.y};if(!best||q.y>best.y)best=q;}});
+      const mm=(best.y-HS.y)/3;
+      if(mm>0.6){
+        ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(best.x,HS.y);ctx.lineTo(best.x,best.y);ctx.stroke();
+        ctx.beginPath();ctx.arc(best.x,best.y,2.4,0,7);ctx.fill();
+        const lab=fmt(mm)+' mm';ctx.font='600 12px "JetBrains Mono",monospace';const tw=ctx.measureText(lab).width;
+        ctx.fillStyle='rgba(5,8,11,.85)';ctx.fillRect(best.x+8,best.y-8,tw+8,17);ctx.fillStyle=cal;ctx.fillText(lab,best.x+12,best.y+5);
+      }
+      const tipA=L.A.tip.y>HS.y+1, tipP=L.P.tip.y>HS.y+1;
+      const msg=d.m.flail?'margine libero everso in atrio':(tipA||tipP)?'margine libero oltre il piano':'coaptazione sul versante ventricolare';
+      ctx.fillStyle=cal;ctx.font='11px "JetBrains Mono",monospace';ctx.fillText(msg,300,488-40);
+    }
+  }
+  // etichette camere
+  ctx.fillStyle='rgba(160,176,188,.75)';ctx.font='600 14px "Barlow Condensed",sans-serif';
+  ctx.fillText('VS',352,170);ctx.fillText('VD',206,178);ctx.fillText('AS',366,laCy+18);ctx.fillText('AD',206,394);
+
+  // color Doppler
+  if(S.color){
+    ctx.save();
+    const a0=-27*Math.PI/180,a1=2*Math.PI/180;
+    sectorPath(ctx,150,SR,a0,a1);
+    ctx.strokeStyle='rgba(200,210,220,.35)';ctx.setLineDash([4,4]);ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+    ctx.clip();
+    // afflusso diastolico (verso la sonda, rosso)
+    const eAmp=g(p,0.585,0.035,d.E)+g(p,0.89,0.03,d.A);
+    if(eAmp>0.05){
+      const gr=ctx.createRadialGradient(352,250,4,352,262,80);
+      gr.addColorStop(0,`rgba(255,120,70,${0.85*eAmp/1.3})`);gr.addColorStop(0.5,`rgba(214,52,40,${0.6*eAmp/1.3})`);gr.addColorStop(1,'rgba(150,20,20,0)');
+      ctx.fillStyle=gr;ctx.beginPath();ctx.ellipse(352,250,46,78,-0.1,0,7);ctx.fill();
+    }
+    // flusso venoso polmonare in AS
+    const pvAmp=g(p,0.28,0.08,d.pvS)+g(p,0.66,0.06,d.pvD);
+    if(Math.abs(pvAmp)>0.04){
+      const col=pvAmp>0?`rgba(210,50,40,${clamp(pvAmp,0,.6)})`:`rgba(60,120,220,${clamp(-pvAmp*1.6,0,.7)})`;
+      ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(350+30*laK,laCy+laRy*0.78,10,22,0.3,0,7);ctx.fill();
+    }
+    const on=mrOn(p,d.m);
+    if(on>0){
+      // convergenza (lato VS)
+      const rpx=d.r*30;
+      if(S.pisa){
+        const gr=ctx.createRadialGradient(L.O.x,L.O.y,rpx*0.2,L.O.x,L.O.y,rpx*2.2);
+        gr.addColorStop(0,'rgba(60,120,230,0)');gr.addColorStop(0.45,'rgba(60,130,235,.85)');gr.addColorStop(1,'rgba(20,50,120,0)');
+        ctx.fillStyle=gr;ctx.beginPath();ctx.arc(L.O.x,L.O.y,rpx*2.2,Math.PI,2*Math.PI);ctx.fill();
+        const g2=ctx.createRadialGradient(L.O.x,L.O.y,0,L.O.x,L.O.y,rpx);
+        g2.addColorStop(0,'rgba(255,236,120,.95)');g2.addColorStop(0.7,'rgba(240,120,50,.9)');g2.addColorStop(1,'rgba(200,40,40,.85)');
+        ctx.fillStyle=g2;ctx.beginPath();ctx.arc(L.O.x,L.O.y,rpx,Math.PI,2*Math.PI);ctx.fill();
+      }
+      // getto a mosaico
+      const P=jetPath(d,L.O,laK);
+      const reach=Math.min(1,(d.m.ecc?0.45+1.0*d.eroa:0.3+1.25*d.eroa*(d.m.late?0.8:1))*(0.7+0.3*d.gk))*on;
+      const maxW=(d.m.ecc?4+16*d.eroa:7+52*d.eroa*(d.m.late?0.8:1))*d.gk;
+      const vcPx=d.vcMeas*30;
+      const cols=['#ffe45c','#7fe07a','#38c6e0','#f0f0f0','#ff6a3d','#3d7bdc','#d8f05a'];
+      const steps=70;
+      for(let i=0;i<=steps;i++){
+        const t=i/steps*reach;const pt=bez(P[0],P[1],P[2],P[3],t);
+        const w=d.m.dir==='central'?lerp(vcPx/2,maxW,Math.pow(Math.sin(Math.PI*0.92*Math.min(1,t/Math.max(reach,0.01))),0.6)):lerp(vcPx/2,maxW,Math.min(1,t*2.2))*(1-0.25*t);
+        const n=Math.max(1,Math.round((3+w/3)*(0.4+1.2*S.gain/100)));
+        for(let k=0;k<n;k++){
+          const a=Math.random()*6.283,rr=Math.sqrt(Math.random())*w;
+          ctx.fillStyle=cols[(Math.random()*cols.length)|0];
+          ctx.globalAlpha=0.55+0.4*Math.random();
+          ctx.fillRect(pt.x+Math.cos(a)*rr,pt.y+Math.sin(a)*rr*0.8,2.4,2.4);
+        }
+      }
+      ctx.globalAlpha=1;
+    }
+    // rumore colore con gain eccessivo: pixel sparsi anche dove non c'è flusso
+    if(S.gain>62){
+      const nn=Math.round((S.gain-62)*14);
+      for(let i=0;i<nn;i++){
+        const a=a0+(a1-a0)*Math.random(), rr=150+(SR-150)*Math.random();
+        const x=APEX.x-Math.sin(a)*rr, y=APEX.y+Math.cos(a)*rr;
+        ctx.fillStyle=Math.random()<0.5?'rgba(220,60,50,.75)':'rgba(70,130,230,.75)';
+        ctx.fillRect(x,y,2.2,2.2);
+      }
+    }
+    ctx.restore();
+  }
+  // calibro VC
+  if(S.vc&&mrOn(p,d.m)>0.3){
+    const vcPx=d.vcMeas*30, y=L.O.y+5;
+    ctx.strokeStyle=getCss('--caliper');ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(L.O.x-vcPx/2,y-5);ctx.lineTo(L.O.x-vcPx/2,y+5);ctx.moveTo(L.O.x+vcPx/2,y-5);ctx.lineTo(L.O.x+vcPx/2,y+5);
+    ctx.moveTo(L.O.x-vcPx/2,y);ctx.lineTo(L.O.x+vcPx/2,y);ctx.stroke();
+    ctx.fillStyle=getCss('--caliper');ctx.font='600 12px "JetBrains Mono",monospace';
+    ctx.fillText('VC '+fmt(d.vcMeas*10)+' mm',L.O.x+vcPx/2+8,y+4);
+  }
+  ctx.restore();
+  // contorno settore e ECG
+  ctx.strokeStyle='rgba(120,140,155,.35)';ctx.lineWidth=1;sectorPath(ctx,6,SR,-SA,SA);ctx.stroke();
+  // scala profondità
+  ctx.fillStyle='#7f8f9b';ctx.font='10px "JetBrains Mono",monospace';
+  for(let cm=0;cm<=15;cm+=5){const y=APEX.y+cm*30;if(y<H-40){ctx.fillRect(W-22,y,6,1);ctx.fillText(cm,W-14,y+3);}}
+  drawEcg(ctx,40,H-14,W-80,22,1,p);
+}
+let cssCache={};function getCss(v){return cssCache[v]||(cssCache[v]=getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#f0c04a');}
+
+/* ---------- zoom PISA/VC ---------- */
+const zoomC=document.getElementById('zoom');let zctx;const ZW=340,ZH=230;let zDark;
+function drawZoom(){
+  const ctx=zctx,d=derive(S);
+  ctx.fillStyle=zDark;ctx.fillRect(0,0,ZW,ZH);
+  const O={x:ZW/2,y:128};
+  const z=Math.min(95,92/Math.max(d.r,0.5));
+  const Q=d.eroa*d.Vmax; // cm3/s
+  // convergenza ad anelli
+  const R=Math.min(170,d.r*z*2.4);
+  for(let rho=R;rho>1;rho-=1.5){
+    const v=Q/(2*Math.PI*Math.pow(rho/z,2));
+    let col;
+    if(v<S.nyq){const k=v/S.nyq;col=`rgb(${18+40*k},${45+110*k},${90+165*k})`;}
+    else{const k=((v/S.nyq-1)/1.6)%2;col=k<1?`rgb(255,${Math.round(235-150*k)},${Math.round(90-60*k)})`:`rgb(${Math.round(230-160*(k-1))},${Math.round(60+150*(k-1))},${Math.round(40+200*(k-1))})`;}
+    ctx.fillStyle=col;ctx.globalAlpha=v<S.nyq?clamp(0.25+v/S.nyq,0,1):0.95;
+    ctx.beginPath();ctx.arc(O.x,O.y,rho,Math.PI,2*Math.PI);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  // lembi
+  const vcPx=d.vcMeas*z;
+  ctx.strokeStyle='#e4ebef';ctx.lineWidth=7;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-10,108);ctx.quadraticCurveTo(O.x-60,140,O.x-vcPx/2-3,O.y+4);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(ZW+10,108);ctx.quadraticCurveTo(O.x+60,140,O.x+vcPx/2+3,O.y+4);ctx.stroke();
+  // getto
+  const cols=['#ffe45c','#7fe07a','#38c6e0','#f0f0f0','#ff6a3d','#3d7bdc'];const r=rng(Math.round(d.eroa*1000)+7);
+  for(let y=O.y+4;y<ZH;y+=2){
+    const t=(y-O.y)/(ZH-O.y);const w=vcPx/2+t*t*vcPx*2.2;
+    for(let k=0;k<4+w/4;k++){ctx.fillStyle=cols[(r()*cols.length)|0];ctx.globalAlpha=.6+.4*r();ctx.fillRect(O.x+(r()*2-1)*w,y,2.2,2.2);}
+  }
+  ctx.globalAlpha=1;
+  const cal=getCss('--caliper');
+  ctx.font='600 12px "JetBrains Mono",monospace';
+  if(S.pisa){
+    const rp=d.r*z,ang=-Math.PI*0.72;
+    ctx.setLineDash([4,3]);ctx.strokeStyle=cal;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(O.x,O.y);ctx.lineTo(O.x+Math.cos(ang)*rp,O.y+Math.sin(ang)*rp);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=cal;ctx.beginPath();ctx.arc(O.x+Math.cos(ang)*rp,O.y+Math.sin(ang)*rp,3,0,7);ctx.fill();
+    ctx.fillText('r '+fmt(d.r*10)+' mm',12,20);
+  }
+  if(S.vc){
+    const y=O.y+10;ctx.strokeStyle=cal;ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(O.x-vcPx/2,y-6);ctx.lineTo(O.x-vcPx/2,y+6);ctx.moveTo(O.x+vcPx/2,y-6);ctx.lineTo(O.x+vcPx/2,y+6);ctx.moveTo(O.x-vcPx/2,y);ctx.lineTo(O.x+vcPx/2,y);ctx.stroke();
+    ctx.fillStyle=cal;ctx.font='600 12px "JetBrains Mono",monospace';ctx.fillText('VC '+fmt(d.vcMeas*10)+' mm',O.x+vcPx/2+10,y+4);
+  }
+  ctx.fillStyle='#8b9ba8';ctx.font='11px "JetBrains Mono",monospace';
+  const t='Va '+S.nyq+' cm/s';ctx.fillText(t,ZW-ctx.measureText(t).width-10,20);
+  // colorbar
+  const gb=ctx.createLinearGradient(0,30,0,90);gb.addColorStop(0,'#ff6a3d');gb.addColorStop(0.5,'#05080b');gb.addColorStop(1,'#3d82d8');
+  ctx.fillStyle=gb;ctx.fillRect(ZW-16,30,6,60);
+}
+
+/* ---------- tracce Doppler ---------- */
+const DW=380,DH=190;
+const dop={cw:{c:document.getElementById('cw')},pw:{c:document.getElementById('pw')},pv:{c:document.getElementById('pv')}};
+function cwEnv(p,d){
+  const a=d.m.late?0.27:0.09,b=0.46;
+  if(p<a||p>b) return 0;
+  const u=(p-a)/(b-a);
+  const sev=clamp((d.eff-0.25)/0.35,0,1);
+  const pk=0.52-0.24*sev;
+  let v=u<pk?Math.pow(u/pk,0.45):1-Math.pow((u-pk)/(1-pk),2.2-1.2*sev)*(0.55+0.45*sev);
+  v=Math.max(0,v);
+  const tail=Math.min(1,(1-u)*12);
+  return 5.0*v*tail;
+}
+function renderDop(){
+  const d=derive(S);
+  // CW
+  for(const k in dop){const o=dop[k];if(!o.off){o.off=document.createElement('canvas');}o.off.width=DW*2;o.off.height=DH*2;o.x=o.off.getContext('2d');o.x.setTransform(2,0,0,2,0,0);}
+  const r=rng(11);
+  let x=dop.cw.x;x.fillStyle='#05080b';x.fillRect(0,0,DW,DH);
+  const base=40,ppm=20;
+  grid(x,base,ppm,[-1,2,4,6],true);
+  for(let i=0;i<DW;i++){
+    const p=(i/DW*2)%1;const v=cwEnv(p,d);
+    if(v>0){
+      const ye=base+v*ppm;
+      const gr=x.createLinearGradient(0,base,0,ye);
+      const I=d.cwI;
+      gr.addColorStop(0,`rgba(230,238,242,${0.05*I})`);gr.addColorStop(0.6,`rgba(230,238,242,${0.35*I})`);gr.addColorStop(1,`rgba(250,252,253,${0.95*I})`);
+      x.fillStyle=gr;x.fillRect(i,base,1,ye-base);
+      for(let k=0;k<3;k++){x.fillStyle=`rgba(255,255,255,${I*r()*0.6})`;x.fillRect(i,base+r()*(ye-base),1,1.5);}
+    }
+    // afflusso diastolico sopra la linea di base
+    const e=g(p,0.585,0.035,d.E)+g(p,0.89,0.03,d.A);
+    if(e>0.03){x.fillStyle='rgba(220,230,236,.55)';x.fillRect(i,base-e*ppm,1,e*ppm);}
+  }
+  axisLab(x,'m/s');
+  // PW mitrale
+  x=dop.pw.x;x.fillStyle='#05080b';x.fillRect(0,0,DW,DH);
+  const b2=140,p2=70;
+  grid(x,b2,p2,[0.5,1,1.5],false,true);
+  for(let i=0;i<DW;i++){
+    const p=(i/DW*2)%1;const v=g(p,0.585,0.035,d.E)+g(p,0.89,0.03,d.A);
+    if(v>0.02){const ye=b2-v*p2;const gr=x.createLinearGradient(0,b2,0,ye);gr.addColorStop(0,'rgba(220,230,236,.12)');gr.addColorStop(1,'rgba(245,250,252,.95)');x.fillStyle=gr;x.fillRect(i,ye,1,b2-ye);}
+  }
+  // marcatori E e A sul primo battito
+  markPeak(x,0.585/2*DW,b2-d.E*p2,'E');markPeak(x,0.89/2*DW,b2-d.A*p2,'A');
+  axisLab(x,'m/s');
+  // PV
+  x=dop.pv.x;x.fillStyle='#05080b';x.fillRect(0,0,DW,DH);
+  const b3=95,p3=70;
+  grid(x,b3,p3,[-0.5,0.5,1],false,true,true);
+  for(let i=0;i<DW;i++){
+    const p=(i/DW*2)%1;
+    const v=g(p,0.29,0.07,d.pvS)+g(p,0.66,0.05,d.pvD)+g(p,0.90,0.018,-0.28);
+    if(Math.abs(v)>0.02){const ye=b3-v*p3;const top=Math.min(ye,b3),h=Math.abs(ye-b3);const gr=x.createLinearGradient(0,b3,0,ye);gr.addColorStop(0,'rgba(220,230,236,.12)');gr.addColorStop(1,'rgba(245,250,252,.95)');x.fillStyle=gr;x.fillRect(i,top,1,h);}
+  }
+  markPeak(x,0.29/2*DW,b3-d.pvS*p3,'S',d.pvS<0);markPeak(x,0.66/2*DW,b3-d.pvD*p3,'D');
+  axisLab(x,'m/s');
+}
+function grid(x,base,ppm,ticks,down,up,both){
+  x.strokeStyle='rgba(120,140,155,.6)';x.lineWidth=1;x.beginPath();x.moveTo(0,base+.5);x.lineTo(DW,base+.5);x.stroke();
+  x.fillStyle='#7f8f9b';x.font='10px "JetBrains Mono",monospace';
+  ticks.forEach(t=>{const y=down?base+t*ppm:base-t*ppm;if(y<4||y>DH-28)return;x.fillRect(DW-30,y,5,1);x.fillText(String(Math.abs(t)).replace('.',','),DW-22,y+3);x.strokeStyle='rgba(120,140,155,.12)';x.beginPath();x.moveTo(0,y+.5);x.lineTo(DW-32,y+.5);x.stroke();});
+}
+function axisLab(x,u){x.fillStyle='#7f8f9b';x.font='10px "JetBrains Mono",monospace';x.fillText(u,DW-26,12);}
+function markPeak(x,px,py,l,neg){x.fillStyle=getCss('--caliper');x.beginPath();x.arc(px,py,3,0,7);x.fill();x.font='600 11px "JetBrains Mono",monospace';x.fillText(l,px-3,neg?py+16:py-7);}
+function drawDops(t){
+  for(const k in dop){
+    const o=dop[k];const ctx=o.ctx;
+    ctx.clearRect(0,0,DW,DH);ctx.drawImage(o.off,0,0,DW,DH);
+    const cur=t; // 0..1 sui due battiti
+    ctx.fillStyle='rgba(5,8,11,.85)';ctx.fillRect(cur*DW+1,0,10,DH-26);
+    ctx.fillStyle='rgba(79,209,139,.8)';ctx.fillRect(cur*DW,0,1.2,DH-26);
+    ctx.fillStyle='#05080b';ctx.fillRect(0,DH-26,DW,26);
+    drawEcg(ctx,0,DH-8,DW-34,14,2,cur);
+  }
+}
+
+/* ---------- morfologia dei lembi, PLAX ---------- */
+const LW=600,LH=400,PXMM=4.4;
+const leafC=document.getElementById('leaf');let lctx,lDark,lTiss;
+const LS={les:'prolapse',side:'post',color:false,plane:true,chord:true,vcView:false};
+const HA={x:368,y:182}, HP={x:382,y:320};
+const LN=(()=>{const dx=HP.x-HA.x,dy=HP.y-HA.y,l=Math.hypot(dx,dy);return {x:dy/l,y:-dx/l};})();
+const sd=pt=>(pt.x-HA.x)*LN.x+(pt.y-HA.y)*LN.y;
+const NORM_S={A:{c:{x:330,y:214},t:{x:347,y:262}},P:{c:{x:352,y:306},t:{x:349,y:265}}};
+const DIA={A:{c:{x:312,y:170},t:{x:258,y:166}},P:{c:{x:350,y:330},t:{x:312,y:322}}};
+const LES_P={billow:{c:{x:428,y:300},t:{x:352,y:266}},prolapse:{c:{x:418,y:306},t:{x:390,y:268}},evert:{c:{x:410,y:316},t:{x:404,y:250}},flail:{c:{x:400,y:306},t:{x:436,y:230}}};
+const LES_A={billow:{c:{x:424,y:212},t:{x:350,y:262}},prolapse:{c:{x:414,y:204},t:{x:392,y:256}},evert:{c:{x:400,y:196},t:{x:418,y:252}},flail:{c:{x:420,y:196},t:{x:452,y:284}}};
+const cp=o=>({c:{x:o.c.x,y:o.c.y},t:{x:o.t.x,y:o.t.y}});
+function leafSys(les,side){
+  let A=cp(NORM_S.A),P=cp(NORM_S.P);
+  if(les==='normal') return {A,P,aff:[]};
+  if(side==='post'){P=cp(LES_P[les]);if(les==='prolapse')A.t={x:364,y:258};if(les==='evert'||les==='flail')A.t={x:356,y:260};return {A,P,aff:['P']};}
+  if(side==='ant'){A=cp(LES_A[les]);if(les==='prolapse')P.t={x:366,y:268};if(les==='evert'||les==='flail')P.t={x:352,y:268};return {A,P,aff:['A']};}
+  // bilembo
+  if(les==='billow'){A=cp(LES_A.billow);P=cp(LES_P.billow);P.t={x:354,y:266};return {A,P,aff:['A','P']};}
+  A={c:{x:414,y:204},t:{x:378,y:256}};
+  P=les==='prolapse'?{c:{x:418,y:306},t:{x:384,y:268}}:cp(LES_P[les]);
+  return {A,P,aff:['A','P']};
+}
+function qpt(h,c,t,u){const v=1-u;return {x:v*v*h.x+2*v*u*c.x+u*u*t.x,y:v*v*h.y+2*v*u*c.y+u*u*t.y};}
+function leafGeom(p,tms){
+  const sys=leafSys(LS.les,LS.side);
+  const late=LS.side==='both';
+  let s=sysAmount(p);
+  const prog=late?clamp((p-0.15)/0.15,0,1):1;
+  const blend=(o,n,k)=>({c:{x:lerp(o.c.x,n.c.x,k),y:lerp(o.c.y,n.c.y,k)},t:{x:lerp(o.t.x,n.t.x,k),y:lerp(o.t.y,n.t.y,k)}});
+  let A=blend(NORM_S.A,sys.A,prog),P=blend(NORM_S.P,sys.P,prog);
+  A=blend(DIA.A,A,s);P=blend(DIA.P,P,s);
+  if(LS.les==='flail'&&tms!=null){
+    const k=sys.aff.includes('P')&&LS.side!=='ant'?P:A;
+    k.t.x+=Math.sin(tms*0.031)*5*(0.4+s);k.t.y+=Math.cos(tms*0.043)*6*(0.4+s);
+  }
+  return {A,P,aff:sys.aff,s};
+}
+function lineDash(ctx,a,b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+function drawLeaf(p,tms){
+  const ctx=lctx;
+  ctx.fillStyle=lDark;ctx.fillRect(0,0,LW,LH);
+  const s=sysAmount(p);
+  ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=lTiss;
+  // parete libera VD
+  ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(0,30);ctx.quadraticCurveTo(300,22,600,34);ctx.stroke();
+  // setto e parete anteriore aortica
+  ctx.lineWidth=22+5*s;ctx.beginPath();ctx.moveTo(0,90-4*s);ctx.quadraticCurveTo(200,96,350,102);ctx.stroke();
+  ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(350,102);ctx.lineTo(600,96);ctx.stroke();
+  // parete posteriore aortica e continuità mitro-aortica
+  ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(600,176);ctx.lineTo(HA.x,HA.y);ctx.stroke();
+  // cuspidi aortiche
+  ctx.lineWidth=2.4;ctx.strokeStyle='#c9d3d9';
+  if(s>0.5){lineDash(ctx,{x:448,y:106},{x:512,y:110});lineDash(ctx,{x:448,y:172},{x:512,y:168});}
+  else{lineDash(ctx,{x:448,y:106},{x:482,y:139});lineDash(ctx,{x:448,y:172},{x:482,y:141});}
+  ctx.strokeStyle=lTiss;
+  // parete posteriore AS e VS
+  ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(HP.x,HP.y);ctx.quadraticCurveTo(480,384,600,330);ctx.stroke();
+  ctx.lineWidth=20+7*s;ctx.beginPath();ctx.moveTo(0,358-8*s);ctx.quadraticCurveTo(220,350-6*s,HP.x,HP.y+4);ctx.stroke();
+  ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(HP.x-6,HP.y);ctx.lineTo(HP.x+8,HP.y+2);ctx.stroke();
+  // muscolo papillare
+  ctx.fillStyle=lTiss;ctx.beginPath();ctx.ellipse(238,322-4*s,24,13,-0.25,0,7);ctx.fill();
+  const G=leafGeom(p,tms);
+  const pap={x:256,y:314-4*s};
+  const ruptured=(LS.les==='evert'||LS.les==='flail');
+  const rupLeaf=!ruptured?null:(LS.side==='ant'?'A':'P');
+  // corde
+  if(LS.chord){
+    ctx.strokeStyle='rgba(205,214,220,.75)';ctx.lineWidth=1.1;
+    [['A',HA],['P',HP]].forEach(([k,h])=>{
+      const L=G[k];
+      if(k===rupLeaf){
+        // moncone dal papillare e frammento attaccato alla punta
+        ctx.beginPath();ctx.moveTo(pap.x,pap.y);ctx.quadraticCurveTo(pap.x+26,pap.y-24,pap.x+34+Math.sin((tms||0)*0.02)*4,pap.y-42);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(L.t.x,L.t.y);ctx.quadraticCurveTo(L.t.x-10,L.t.y+14,L.t.x-2+Math.sin((tms||0)*0.05)*6,L.t.y+28);ctx.stroke();
+        const mid=qpt(h,L.c,L.t,0.6);ctx.beginPath();ctx.moveTo(pap.x,pap.y);ctx.lineTo(mid.x,mid.y);ctx.stroke();
+      }else{
+        [0.6,0.85,1].forEach(u=>{const q=qpt(h,L.c,L.t,u);ctx.beginPath();ctx.moveTo(pap.x,pap.y);ctx.lineTo(q.x,q.y);ctx.stroke();});
+      }
+    });
+  }
+  // lembi
+  const thick=LS.side==='both'?6:3.6;
+  ctx.strokeStyle='#e8eef1';
+  [['A',HA],['P',HP]].forEach(([k,h])=>{const L=G[k];ctx.lineWidth=(G.aff.includes(k)?thick:3.6);ctx.beginPath();ctx.moveTo(h.x,h.y);ctx.quadraticCurveTo(L.c.x,L.c.y,L.t.x,L.t.y);ctx.stroke();});
+  // etichette
+  ctx.fillStyle='rgba(160,176,188,.8)';ctx.font='600 14px "Barlow Condensed",sans-serif';
+  ctx.fillText('VD',190,62);ctx.fillText('VS',170,230);ctx.fillText('Ao',540,142);ctx.fillText('AS',520,300);
+  ctx.fillText('LMA',296,G.s>0.5?200:142);ctx.fillText('LMP',318,G.s>0.5?300:310);
+  // getto colore
+  const on=LS.les==='normal'?0:mrOn(p,{late:LS.side==='both'});
+  if(LS.color&&on>0){
+    const O={x:(G.A.t.x+G.P.t.x)/2,y:(G.A.t.y+G.P.t.y)/2};
+    const dir=LS.side==='post'||(LS.side==='both'&&ruptured)?'up':LS.side==='ant'?'down':'central';
+    const P3=dir==='up'?[O,{x:O.x+40,y:O.y-40},{x:470,y:196},{x:575,y:196}]:dir==='down'?[O,{x:O.x+40,y:O.y+40},{x:470,y:350},{x:575,y:330}]:[O,{x:O.x+50,y:O.y},{x:500,y:272},{x:575,y:272}];
+    let cfg={billow:[0.22,4],prolapse:[0.75,9],evert:[0.9,12],flail:[1,15]}[LS.les];
+    let rconv={billow:5,prolapse:11,evert:14,flail:17}[LS.les];
+    let vcPx=0;
+    if(LS.vcView){const dv=derive(S);vcPx=dv.vcMeas*10*PXMM;rconv=dv.r*10*PXMM;cfg=[{lieve:0.5,moderata:0.78,severa:1}[gOf('eroa')],vcPx/2*2.6+4];}
+    if(LS.vcView){
+      // PISA gialla: emisfero pieno fino al raggio di aliasing, bordo netto
+      ctx.fillStyle='rgba(255,214,0,.92)';ctx.beginPath();ctx.arc(O.x,O.y,rconv,Math.PI*0.5,Math.PI*1.5);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#fff3a0';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(O.x,O.y,rconv,Math.PI*0.5,Math.PI*1.5);ctx.stroke();
+    }else{
+      const g2=ctx.createRadialGradient(O.x,O.y,0,O.x,O.y,rconv*1.9);
+      g2.addColorStop(0,'rgba(255,230,110,.9)');g2.addColorStop(0.5,'rgba(230,90,50,.8)');g2.addColorStop(0.55,'rgba(70,130,235,.8)');g2.addColorStop(1,'rgba(30,60,140,0)');
+      ctx.fillStyle=g2;ctx.beginPath();ctx.arc(O.x,O.y,rconv*1.9,Math.PI*0.5,Math.PI*1.5);ctx.fill();
+    }
+    // il getto resta dentro l'atrio
+    ctx.save();ctx.beginPath();ctx.moveTo(356,186);ctx.lineTo(600,181);ctx.lineTo(600,330);ctx.quadraticCurveTo(480,378,HP.x,HP.y-2);ctx.lineTo(356,300);ctx.closePath();ctx.clip();
+    const cols=LS.vcView?['#1846c8','#2a64e6','#3f80ff','#5b9bff','#2050d8','#7ab0ff']:['#ffe45c','#7fe07a','#38c6e0','#f0f0f0','#ff6a3d','#3d7bdc'];
+    for(let i=0;i<=60;i++){
+      const t=i/60*cfg[0]*on;const pt=bez(P3[0],P3[1],P3[2],P3[3],t);const w=LS.vcView?(t<0.05?vcPx/2:lerp(vcPx/2,cfg[1],Math.min(1,(t-0.05)*2.2))):lerp(2,cfg[1],Math.min(1,t*2.5));
+      const nk=LS.vcView?4+w/1.6:2+w/2.5, sz=LS.vcView?2.8:2.3;
+      for(let k=0;k<nk;k++){const a=Math.random()*6.283,rr=Math.sqrt(Math.random())*w;ctx.fillStyle=cols[(Math.random()*cols.length)|0];ctx.globalAlpha=LS.vcView?.75+.25*Math.random():.55+.4*Math.random();ctx.fillRect(pt.x+Math.cos(a)*rr,pt.y+Math.sin(a)*rr,sz,sz);}
+    }
+    ctx.globalAlpha=1;ctx.restore();
+    if(LS.vcView&&on>0.3){
+      const tx=P3[1].x-P3[0].x,ty=P3[1].y-P3[0].y,tl=Math.hypot(tx,ty),ux=tx/tl,uy=ty/tl,nx=-uy,ny=ux;
+      const c={x:O.x+ux*7,y:O.y+uy*7},h=vcPx/2;
+      const cal='#39ff6a';ctx.strokeStyle=cal;ctx.fillStyle=cal;ctx.lineWidth=4;ctx.lineCap='round';
+      ctx.shadowColor='rgba(57,255,106,.6)';ctx.shadowBlur=6;
+      const e1={x:c.x+nx*h,y:c.y+ny*h},e2={x:c.x-nx*h,y:c.y-ny*h};
+      lineDash(ctx,e1,e2);
+      lineDash(ctx,{x:e1.x-ux*8,y:e1.y-uy*8},{x:e1.x+ux*8,y:e1.y+uy*8});
+      lineDash(ctx,{x:e2.x-ux*8,y:e2.y-uy*8},{x:e2.x+ux*8,y:e2.y+uy*8});
+      ctx.shadowBlur=0;
+      const dv=derive(S);const lab='VC '+fmt(dv.vcMeas*10)+' mm';
+      ctx.font='700 15px "JetBrains Mono",monospace';const tw=ctx.measureText(lab).width;
+      const lx=e1.x+nx*10+2,ly=e1.y+ny*10+14;
+      ctx.fillStyle='rgba(5,8,11,.85)';ctx.fillRect(lx-4,ly-15,tw+8,21);ctx.fillStyle=cal;ctx.fillText(lab,lx,ly);
+    }
+  }
+  // piano anulare e calibro dello spostamento
+  if(LS.plane){
+    const cal=getCss('--caliper');
+    ctx.strokeStyle=cal;ctx.lineWidth=1.3;ctx.setLineDash([5,4]);
+    const ex={x:(HP.x-HA.x)*0.18,y:(HP.y-HA.y)*0.18};
+    lineDash(ctx,{x:HA.x-ex.x,y:HA.y-ex.y},{x:HP.x+ex.x,y:HP.y+ex.y});ctx.setLineDash([]);
+    ctx.fillStyle=cal;ctx.font='11px "JetBrains Mono",monospace';ctx.fillText('piano anulare',HA.x-104,HA.y-10);
+    if(G.s>0.6&&G.aff.length){
+      let best=null;
+      G.aff.forEach(k=>{const h=k==='A'?HA:HP,L=G[k];for(let u=0;u<=1.0001;u+=0.02){const q=qpt(h,L.c,L.t,u);const dd=sd(q);if(!best||dd>best.d)best={q,d:dd};}});
+      if(best&&best.d>2){
+        const foot={x:best.q.x-LN.x*best.d,y:best.q.y-LN.y*best.d};
+        ctx.lineWidth=1.4;lineDash(ctx,foot,best.q);
+        ctx.beginPath();ctx.arc(best.q.x,best.q.y,2.6,0,7);ctx.fill();
+        ctx.font='600 12px "JetBrains Mono",monospace';
+        const lab=fmt(best.d/PXMM)+' mm',tw=ctx.measureText(lab).width,lx=foot.x-tw-12,ly=foot.y+4;
+        ctx.fillStyle='rgba(5,8,11,.85)';ctx.fillRect(lx-4,ly-12,tw+8,17);
+        ctx.fillStyle=cal;ctx.fillText(lab,lx,ly);
+      }
+    }
+  }
+  drawEcg(ctx,40,LH-12,LW-80,18,1,p);
+}
+const LES_TXT={
+  normal:['Normale','Lembi sul versante ventricolare in sistole, coaptazione di alcuni millimetri sotto il piano anulare. Nessun segmento oltre il piano.'],
+  billow:['Billowing','Il corpo del lembo supera il piano anulare, ma il margine libero e il punto di coaptazione restano in ventricolo. Spesso senza IM significativa; comune nella degenerazione mixomatosa precoce.'],
+  prolapse:['Prolasso','Spostamento sistolico del lembo oltre il piano anulare di più di 2 mm in parasternale asse lungo, con il margine libero che supera il piano. Il getto è diretto in senso opposto al lembo che prolassa.'],
+  evert:['Rottura cordale con eversione','Una corda rotta lascia libero il margine, che si ribalta verso l\'atrio. Il segmento resta vicino al piano: è un flail parziale. Cerca il frammento di corda mobile sulla punta.'],
+  flail:['Flail','Il margine libero punta verso il tetto dell\'atrio in sistole, con movimento caotico e corda libera. È un segno specifico di IM severa. Per la TEER contano anche ampiezza e gap del flail (criteri anatomici EVEREST: gap sotto 10 mm, ampiezza sotto 15 mm; da verificare sul documento originale).']
+};
+function renderLeaf(){
+  const sys=leafSys(LS.les,LS.side);
+  const rows=[];
+  let maxD=null;
+  sys.aff.forEach(k=>{const h=k==='A'?HA:HP,L=sys[k];for(let u=0;u<=1.0001;u+=0.02){const v=sd(qpt(h,L.c,L.t,u))/PXMM;if(maxD===null||v>maxD)maxD=v;}});
+  rows.push(['Spostamento massimo oltre il piano',maxD===null?'nessuno':maxD>0.2?fmt(maxD)+' mm':'nessuno']);
+  const tipSide=t=>sd(t)>0?'atrio':'ventricolo';
+  const affTip=sys.aff.length?sys[sys.aff[sys.aff.length===2&&(LS.les==='evert'||LS.les==='flail')?1:0]].t:null;
+  rows.push(['Margine libero del lembo malato',affTip?(tipSide(affTip)==='atrio'?fmt(sd(affTip)/PXMM)+' mm in atrio':'in ventricolo'):'non applicabile']);
+  if(affTip){
+    const L=sys[sys.aff.length===2&&(LS.les==='evert'||LS.les==='flail')?'P':sys.aff[0]];
+    const dv={x:L.t.x-L.c.x,y:L.t.y-L.c.y},l=Math.hypot(dv.x,dv.y);const dot=(dv.x*LN.x+dv.y*LN.y)/l;
+    rows.push(['Punta rivolta verso',dot>0.25&&sd(L.t)>0?'atrio (eversione)':'ventricolo']);
+  }
+  if(LS.les==='evert'||LS.les==='flail'){const gap=Math.hypot(sys.A.t.x-sys.P.t.x,sys.A.t.y-sys.P.t.y)/PXMM;rows.push(['Gap tra i margini',fmt(gap)+' mm']);}
+  const dir=LS.les==='normal'?'nessuno':LS.side==='post'||(LS.side==='both'&&(LS.les==='evert'||LS.les==='flail'))?'anteriore, verso la radice aortica':LS.side==='ant'?'posteriore, lungo la parete atriale':'centrale o multiplo, spesso telesistolico';
+  rows.push(['Getto atteso',dir]);
+  const sev={normal:'nessuna o fisiologica',billow:'nessuna o lieve',prolapse:'variabile, da quantificare',evert:'spesso moderata o severa',flail:'severa, segno specifico'}[LS.les];
+  rows.push(['IM attesa',sev]);
+  document.getElementById('leafRows').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td class="v" style="white-space:normal">${r[1]}</td></tr>`).join('');
+  const T=LES_TXT[LS.les];
+  const sideTxt={post:'lembo posteriore',ant:'lembo anteriore',both:'bilembo, tipo Barlow con lembi ispessiti'}[LS.side];
+  document.getElementById('leafDef').innerHTML=`<b>${T[0]}${LS.les==='normal'?'':', '+sideTxt}.</b> ${T[1]}`;
+  document.getElementById('leafHud').textContent=T[0];
+}
+
+/* ---------- loop ---------- */
+let t0=performance.now(),tPause=0,phaseFrozen=0.3;
+function frame(now){
+  let ph,ph2;
+  if(S.playing){const cyc=60/S.hr*1000/S.speed;const el=(now-t0);ph=(el/cyc)%1;ph2=((el/cyc)%2)/2;phaseFrozen=ph;}
+  else{ph=phaseFrozen;ph2=ph/2;}
+  drawMain(ph);drawDops(ph2);drawLeaf(ph,S.playing?now*S.speed:null);
+  if(S.playing) requestAnimationFrame(frame);
+}
+function redrawAll(){renderReadout();renderDop();drawZoom();renderLeaf();if(!S.playing){drawMain(phaseFrozen);drawDops(phaseFrozen/2);drawLeaf(phaseFrozen,null);}}
+function play(on){S.playing=on;const b=document.getElementById('tPlay');b.textContent=on?'Pausa':'Riproduci';b.setAttribute('aria-pressed',String(on));if(on){t0=performance.now()-phaseFrozen*60/S.hr*1000/S.speed;requestAnimationFrame(frame);}else{drawMain(phaseFrozen);drawDops(phaseFrozen/2);drawLeaf(phaseFrozen,null);}}
+
+function init(){
+  mctx=setupCanvas(mainC,W,H);
+  zctx=setupCanvas(zoomC,ZW,ZH);
+  for(const k in dop){dop[k].ctx=setupCanvas(dop[k].c,DW,DH);}
+  const dn=noiseCanvas(256,256,0,34,3), tn=noiseCanvas(128,128,70,235,9);
+  darkPat=mctx.createPattern(dn,'repeat');tissPat=mctx.createPattern(tn,'repeat');
+  zDark=zctx.createPattern(noiseCanvas(256,256,0,30,5),'repeat');
+  lctx=setupCanvas(leafC,LW,LH);
+  lDark=lctx.createPattern(noiseCanvas(256,256,0,32,13),'repeat');lTiss=lctx.createPattern(noiseCanvas(128,128,70,235,17),'repeat');
+  document.querySelectorAll('#lesion button').forEach(b=>b.addEventListener('click',()=>{LS.les=b.dataset.l;document.querySelectorAll('#lesion button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redrawAll();}));
+  document.querySelectorAll('#leafSel button').forEach(b=>b.addEventListener('click',()=>{LS.side=b.dataset.s;document.querySelectorAll('#leafSel button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redrawAll();}));
+  document.getElementById('lVc').addEventListener('click',()=>{LS.vcView=!LS.vcView;if(LS.vcView){LS.color=true;document.getElementById('lColor').setAttribute('aria-pressed','true');}document.getElementById('lVc').setAttribute('aria-pressed',String(LS.vcView));redrawAll();});
+  [['lColor','color'],['lPlane','plane'],['lChord','chord']].forEach(([id,k])=>{const b=document.getElementById(id);b.addEventListener('click',()=>{LS[k]=!LS[k];b.setAttribute('aria-pressed',String(LS[k]));redrawAll();});});
+  document.querySelectorAll('#grade button').forEach(b=>b.addEventListener('click',()=>setGrade(b.dataset.g)));
+  document.getElementById('gain').addEventListener('input',e=>{S.gain=+e.target.value;redrawAll();});
+
+  document.getElementById('nyq').addEventListener('input',e=>{S.nyq=+e.target.value;redrawAll();});
+  document.querySelectorAll('#mLes button').forEach(b=>b.addEventListener('click',()=>{S.les=b.dataset.v;syncMechUI();redrawAll();}));
+  document.querySelectorAll('#mSide button').forEach(b=>b.addEventListener('click',()=>{S.side=b.dataset.v;syncMechUI();redrawAll();}));
+  renderPgrid();
+  document.getElementById('pgrid').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.ov[b.dataset.k]=b.dataset.v;renderPgrid();redrawAll();});
+  document.getElementById('speed').addEventListener('input',e=>{const ph=phaseFrozen;S.speed=+e.target.value;document.getElementById('speedOut').textContent=fmt(S.speed,2)+'x';if(S.playing){t0=performance.now()-ph*60/S.hr*1000/S.speed;}});
+  document.getElementById('tAnat').addEventListener('click',()=>{S.anat=!S.anat;S.color=S.vc=S.pisa=!S.anat;syncToggles();redrawAll();});
+  [['tColor','color'],['tVc','vc'],['tPisa','pisa']].forEach(([id,k])=>{const b=document.getElementById(id);b.addEventListener('click',()=>{S[k]=!S[k];if(S[k])S.anat=false;syncToggles();redrawAll();});});
+  document.getElementById('tPlay').addEventListener('click',()=>play(!S.playing));
+  if(!S.playing){document.getElementById('tPlay').textContent='Riproduci';document.getElementById('tPlay').setAttribute('aria-pressed','false');}
+  redrawAll();
+  if(S.playing) requestAnimationFrame(frame); else {drawMain(phaseFrozen);drawDops(phaseFrozen/2);}
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{redrawAll();});
+}
+const PROWS=[['eroa','EROA e PISA'],['vc','Vena contracta'],['pv','Vena polmonare S/D'],['ea','Afflusso E/A'],['la','Atrio sinistro']];
+function renderPgrid(){
+  document.getElementById('pgrid').innerHTML=PROWS.map(([k,l])=>`<span class="pl">${l}</span><span class="pb" role="group" aria-label="${l}">${[['auto','Auto',''],['lieve','L','l'],['moderata','M','m'],['severa','S','s']].map(([v,t,c])=>`<button type="button" class="${c}" data-k="${k}" data-v="${v}" aria-pressed="${S.ov[k]===v}" title="${k==='la'?({auto:'segue il grado',lieve:'normale',moderata:'dilatato',severa:'molto dilatato'})[v]:(v==='auto'?'segue il grado':v)}">${t}</button>`).join('')}</span>`).join('');
+}
+function syncMechUI(){
+  document.querySelectorAll('#mLes button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.les)));
+  document.querySelectorAll('#mSide button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.side)));
+}
+function syncToggles(){
+  document.getElementById('tColor').setAttribute('aria-pressed',String(S.color));document.getElementById('tVc').setAttribute('aria-pressed',String(S.vc));
+  document.getElementById('tPisa').setAttribute('aria-pressed',String(S.pisa));document.getElementById('tAnat').setAttribute('aria-pressed',String(S.anat));
+}
+function setGrade(gr){S.grade=gr;S.eroa=EROA_G[gr];document.querySelectorAll('#grade button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.g===gr)));redrawAll();}
+function loadState(o){
+  Object.assign(S,{gain:50,nyq:40,les:'prolapse',side:'post'},o);
+  S.ov=Object.assign({},OV0,o.ov||{});
+  S.anat=false;S.color=S.vc=S.pisa=true;syncToggles();
+  document.getElementById('nyq').value=S.nyq;document.getElementById('gain').value=S.gain;
+  renderPgrid();syncMechUI();setGrade(S.grade);
+}
+
+/* ---------- atlante ---------- */
+const REF={
+  hall:{t:'Hall SA, Brickner ME, Willett DL et al. Assessment of mitral regurgitation severity by Doppler color flow mapping of the vena contracta. Circulation 1997;95:636-42.',doi:'10.1161/01.cir.95.3.636'},
+  es95:{t:'Enriquez-Sarano M, Miller FA, Hayes SN et al. Effective mitral regurgitant orifice area: clinical use and pitfalls of the proximal isovelocity surface area method. J Am Coll Cardiol 1995;25:703-9.',doi:'10.1016/0735-1097(94)00434-R'},
+  es05:{t:'Enriquez-Sarano M, Avierinos JF, Messika-Zeitoun D et al. Quantitative determinants of the outcome of asymptomatic mitral regurgitation. N Engl J Med 2005;352:875-83.',doi:'10.1056/NEJMoa041451'},
+  zeng:{t:'Zeng X, Levine RA, Hua L et al. Diagnostic value of vena contracta area in the quantification of mitral regurgitation severity by color Doppler 3D echocardiography. Circ Cardiovasc Imaging 2011;4:506-13.',doi:'10.1161/CIRCIMAGING.110.961649'},
+  helm:{t:'Helmcke F, Nanda NC, Hsiung MC et al. Color Doppler assessment of mitral regurgitation with orthogonal planes. Circulation 1987;75:175-83.',doi:'10.1161/01.cir.75.1.175'},
+  lesb:{t:'Lesbre JP, Tribouilloy C. Echo-Doppler quantitative assessment of non-ischaemic mitral regurgitation. Eur Heart J 1991;12 Suppl B:10-4.',doi:'10.1093/eurheartj/12.suppl_b.10'},
+  klein:{t:'Klein AL, Obarski TP, Stewart WJ et al. Transesophageal Doppler echocardiography of pulmonary venous flow: a new marker of mitral regurgitation severity. J Am Coll Cardiol 1991;18:518-26.',doi:'10.1016/0735-1097(91)90609-d'},
+  eren:{t:'Eren M, Bolca O, Dagdeviren B et al. The determinants of systolic pulmonary venous flow reversal by transthoracic pulsed Doppler in mitral regurgitation. Acta Cardiol 2001;56:83-9.',doi:'10.2143/AC.56.2.2005622'},
+  es99:{t:'Enriquez-Sarano M, Dujardin KS, Tribouilloy CM et al. Determinants of pulmonary venous flow reversal in mitral regurgitation and its usefulness in determining the severity of regurgitation. Am J Cardiol 1999;83:535-41.',doi:'10.1016/s0002-9149(98)00909-6'},
+  mark95:{t:'Mark JB, Ahmed SU, Kluger R, Robinson SM. Influence of jet direction on pulmonary vein flow patterns in severe mitral regurgitation. Anesth Analg 1995;80:486-91.',doi:'10.1097/00000539-199503000-00009'},
+  zyg:{t:'Zygouri A, Rasmeehirun P, L\'Official G, Papadopoulos CH et al. Screening and procedural guidance for mitral transcatheter edge-to-edge repair (M-TEER). J Clin Med 2025;14(14):4902.',doi:'10.3390/jcm14144902'},
+  coapt:{t:'Stone GW, Lindenfeld J, Abraham WT et al. Transcatheter mitral-valve repair in patients with heart failure (COAPT). N Engl J Med 2018;379:2307-18.',doi:'10.1056/NEJMoa1806640'},
+  mitrafr:{t:'Obadia JF, Messika-Zeitoun D, Leurent G et al. Percutaneous repair or medical treatment for secondary mitral regurgitation (MITRA-FR). N Engl J Med 2018;379:2297-306.',doi:'10.1056/NEJMoa1805374'},
+  gray19:{t:'Grayburn PA, Sannino A, Packer M. Proportionate and disproportionate functional mitral regurgitation: a new conceptual framework that reconciles the results of the MITRA-FR and COAPT trials. JACC Cardiovasc Imaging 2019;12:353-62.',doi:'10.1016/j.jcmg.2018.11.006'},
+  packer20:{t:'Packer M, Grayburn PA. New evidence supporting a novel conceptual framework for distinguishing proportionate and disproportionate functional mitral regurgitation. JAMA Cardiol 2020;5:469-75.',doi:'10.1001/jamacardio.2019.5971'},
+  miro:{t:'Miró Palau V, Salvador A, Rincón de Arellano A et al. Clinical value of parameters derived by the application of the proximal isovelocity surface area method in the assessment of mitral regurgitation. Int J Cardiol 1999;68:209-16.',doi:'10.1016/s0167-5273(98)00355-6'},
+  mri99:{t:'Thomas L, Foster E, Hoffman JI, Schiller NB. The Mitral Regurgitation Index: an echocardiographic guide to severity. J Am Coll Cardiol 1999;33:2016-22.',doi:'10.1016/s0735-1097(99)00111-4'},
+  thomas:{t:'Thomas L, Foster E, Schiller NB. Peak mitral inflow velocity predicts mitral regurgitation severity. J Am Coll Cardiol 1998;31:174-9.',doi:'10.1016/s0735-1097(97)00454-3'},
+  uret:{t:'Uretsky S, Gillam L, Lang R et al. Discordance between echocardiography and MRI in the assessment of mitral regurgitation severity: a prospective multicenter trial. J Am Coll Cardiol 2015;65:1078-88.',doi:'10.1016/j.jacc.2014.12.047'},
+  ase:{t:'Zoghbi WA, Adams D, Bonow RO et al. Recommendations for noninvasive evaluation of native valvular regurgitation. J Am Soc Echocardiogr 2017;30:303-71.',doi:'10.1016/j.echo.2017.01.007'},
+  eacvi:{t:'Lancellotti P, Pibarot P, Chambers J et al. Multi-modality imaging assessment of native valvular regurgitation: an EACVI and ESC council of valvular heart disease position paper. Eur Heart J Cardiovasc Imaging 2022;23:e171-e232.',doi:'10.1093/ehjci/jeab253'},
+  pieper:{t:'Pieper EP, Hellemans IM, Hamer HP et al. Biplane transesophageal color-flow Doppler imaging in assessing severity of mitral regurgitation: influence of hemodynamic circumstances and mechanism of regurgitation. J Cardiothorac Vasc Anesth 1996;10:748-55.',doi:'10.1016/S1053-0770(96)80200-X'},
+  esc25:{t:'Adamo M, Massussi M, Ajmone Marsan N et al. 2025 ESC/EACTS valvular heart disease guidelines: practical updates on mitral and tricuspid regurgitation. Eur Heart J Suppl 2026;28(Suppl 4):iv83-iv96.',doi:'10.1093/eurheartjsupp/suag001'},
+  sec25:{t:'SEC Working Group. Insights into the 2025 ESC/EACTS guidelines on the management of patients with valvular heart disease. Rev Esp Cardiol 2026;79(4).',doi:'10.1016/j.rec.2025.12.010'}
+};
+const CARDS=[
+ {id:'vc',cat:'semi',name:'Vena contracta 2D',cut:'Severa ≥ 7 mm · lieve < 3 mm',
+  m:[['VPP osservato, VC biplana ≥ 5 mm',100],['Severa esclusa con VC ≤ 3 mm',83]],
+  sens:null,
+  meta:[['Studio','Hall 1997, 80 pazienti'],['Riferimento','EROA e volume con metodo volumetrico PW'],['Correlazione','r 0,86 con EROA (PLAX), 0,88 biplana']],
+  cav:'Solo 12 pazienti su 80 avevano un prolasso: la maggior parte era IM secondaria. Il cut-off testato era 5 mm, non i 7 mm delle linee guida. L\'abstract non riporta sensibilità e specificità formali.',
+  trust:'Media. Dato coerente e riprodotto nella pratica, ma campione piccolo e poco rappresentativo della primitiva.',ref:['hall'],sim:{vc:true}},
+ {id:'pisa',cat:'quant',name:'EROA con PISA',cut:'Severa ≥ 0,40 cm² · lieve < 0,20 cm²',
+  m:[['Correlazione con Doppler quantitativo (r)',97],['Rischio di morte, EROA ≥ 40 vs < 20 mm² (RR aggiustato)',null,'2,90']],
+  meta:[['Studio','Enriquez-Sarano 1995, 119 pazienti; NEJM 2005, 456 asintomatici'],['Riferimento','Doppler quantitativo e 2D quantitativo'],['Prognosi','sopravvivenza a 5 anni 58% con EROA ≥ 40 mm², contro 78% attesa']],
+  cav:'Nessuna sensibilità o specificità: il metodo è validato per accordo e per valore prognostico. Sovrastima nel prolasso quando la convergenza non è ottimale (7 casi su 119, EROA quasi raddoppiata). Nel prolasso telesistolico un singolo fotogramma sovrastima il volume.',
+  trust:'Alta per il valore prognostico, che viene da una coorte prospettica ampia. Media per l\'accuratezza nel singolo paziente.',ref:['es95','es05'],sim:{pisa:true}},
+ {id:'vca',cat:'quant',name:'Area della vena contracta 3D',cut:'Severa ≥ 0,41 cm² (cut-off dello studio)',
+  m:[['Sensibilità, moderata contro severa',97],['Specificità',82]],
+  meta:[['Studio','Zeng 2011, 83 pazienti'],['Riferimento','metodo integrativo 2D ASE'],['Altro','la PISA 2D sottostimava del 27% nell\'IM funzionale']],
+  cav:'Il riferimento è a sua volta ecocardiografico, quindi c\'è bias di incorporazione. Popolazione mista primitiva e secondaria. Risoluzione laterale del color 3D limitata.',
+  trust:'Media. Numeri buoni, standard di riferimento debole.',ref:['zeng'],sim:{}},
+ {id:'jet',cat:'qual',name:'Area del getto / area atriale',cut:'Severa > 40% (Helmcke) o > 50% (ASE 2017)',
+  m:[['Severe con rapporto > 40%, ricavata da 26/28',93],['Lieve con rapporto < 20%, 34/36 grado I',94]],
+  meta:[['Studio','Helmcke 1987, 147 pazienti'],['Riferimento','angiografia'],['Studi contrari','Lesbre 1991: in TTE distingue solo grado 1 da 4; Hall 1997: nessuna correlazione indipendente con EROA']],
+  cav:'Le percentuali le ho calcolate io dai numeri dell\'abstract: sono una sensibilità per categoria, non una specificità vera. Il getto eccentrico a parete appare piccolo per effetto Coanda. Dipende da guadagno, Nyquist e pressione arteriosa.',
+  trust:'Bassa per la quantificazione. Utile solo a colpo d\'occhio per i casi estremi.',ref:['helm','lesb','hall'],sim:{color:true}},
+ {id:'pv',cat:'semi',name:'Inversione sistolica in vena polmonare',cut:'Inversione S = severa',
+  m:[['Sensibilità TEE contro color TEE 4+',93],['Specificità TEE',100],['Sensibilità TTE (Eren)',89],['Specificità TTE (Eren)',95]],
+  meta:[['Studi','Klein 1991, 50 pazienti TEE; Eren 2001, 50 pazienti TTE; Enriquez-Sarano 1999, 128 pazienti con quantificazione'],['Riferimento','grado color TEE; contro cateterismo sens 86%, spec 81%'],['Discordanza','tra vena destra e sinistra nel 24% dei casi']],
+  cav:'La specificità 100% di Klein è contro il color TEE, che condivide gli errori del test; contro l\'angiografia scende all\'81%. FA e pressioni atriali alte smussano la S anche senza IM severa. Contro la quantificazione Doppler (Enriquez-Sarano 1999, 128 pazienti) la sensibilità scende al 60% circa con specificità 85–92%: il 41% dei pazienti con lesione severa alla chirurgia non aveva inversione.',
+  trust:'Media. Segno specifico se presente, ma la sua assenza non esclude la severa.',ref:['klein','eren','es99'],sim:{}},
+ {id:'E',cat:'qual',name:'Onda E mitralica',cut:'E > 1,2 m/s supporta severa · A dominante la esclude',
+  m:[['Sensibilità',86],['Specificità',86],['Valore predittivo positivo',75]],
+  meta:[['Studio','Thomas 1998, 102 pazienti, retrospettivo'],['Riferimento','grading qualitativo esperto e frazione rigurgitante'],['Correlazione','r 0,52 con la frazione rigurgitante']],
+  cav:'Retrospettivo e monocentrico. L\'onda E cambia con età, rilasciamento, FA, stenosi mitralica e alta portata. Utile come filtro, non come prova.',
+  trust:'Media come esclusione (pattern A dominante), bassa come conferma.',ref:['thomas'],sim:{}},
+ {id:'ratio',cat:'semi',name:'VTI mitralico / VTI aortico',cut:'> 1,4 severa (ASE) · lo studio usava > 1,3',
+  m:[['Sensibilità per FR > 40%',80],['Specificità',87]],
+  meta:[['Studio','Lesbre e Tribouilloy 1991, sottogruppo di 37 pazienti'],['Riferimento','frazione rigurgitante emodinamica'],['Correlazione','r 0,77']],
+  cav:'L\'endpoint era FR > 40%, non la definizione attuale di severa (FR ≥ 50%). Campione molto piccolo. Non vale con stenosi mitralica, insufficienza aortica o FA.',
+  trust:'Bassa. Dato vecchio e su un endpoint diverso da quello che usiamo oggi.',ref:['lesb'],sim:{}},
+ {id:'cw',cat:'qual',name:'CW del getto: densità e forma',cut:'Denso e triangolare = severa · debole e parabolico = lieve',
+  m:[['Sensibilità','none'],['Specificità','none']],
+  meta:[['Fonte','raccomandazioni ASE 2017 ed EACVI 2022'],['Uso','segno di supporto, giudizio visivo']],
+  cav:'Non ho trovato in questa ricerca uno studio con sensibilità e specificità per la densità del CW. La densità dipende dal guadagno e dall\'allineamento. La forma triangolare riflette l\'onda v, che dipende anche dalla compliance atriale.',
+  trust:'Bassa come dato numerico, ma utile nella pratica per la coerenza del quadro.',ref:['ase','eacvi'],sim:{}},
+ {id:'flail',cat:'qual',name:'Flail e rottura di corda',cut:'Presente = segno specifico di severa',
+  m:[['Sensibilità','none'],['Specificità','none']],
+  meta:[['Fonte','raccomandazioni ASE 2017 ed EACVI 2022'],['Uso','criterio specifico nell\'algoritmo integrato']],
+  cav:'Considerato specifico per consenso. In questa ricerca non ho recuperato uno studio con accuratezza diagnostica: va verificato se ti serve un numero.',
+  trust:'Alta come specificità clinica, nessun dato numerico verificato qui.',ref:['ase','eacvi'],sim:{les:'flail'}},
+ {id:'vol',cat:'quant',name:'Volume e frazione rigurgitante',cut:'Severa ≥ 60 mL e ≥ 50%',
+  m:[['Correlazione eco contro RM (r)',60],['Correlazione RM con rimodellamento post chirurgia (r)',85],['Correlazione eco con rimodellamento (r)',32]],
+  meta:[['Studio','Uretsky 2015, 103 pazienti, prospettico multicentrico'],['Riferimento','riduzione del volume telediastolico dopo chirurgia (26 pazienti)']],
+  cav:'Non è uno studio di sensibilità e specificità, ma cambia la lettura di tutti gli altri: se l\'eco integrata correla poco con l\'esito chirurgico, tutti gli studi che la usano come gold standard ereditano quell\'errore.',
+  trust:'Media. Campione chirurgico piccolo, ma il messaggio è coerente con altri lavori.',ref:['uret'],sim:{}}
+];
+function renderCards(f){
+  document.getElementById('cards').innerHTML=CARDS.filter(c=>f==='all'||c.cat===f).map(c=>{
+    const ms=c.m.map(m=>{
+      if(m[1]==='none') return `<div class="metric"><div class="k">${m[0]}</div><div class="n none">non riportata negli studi trovati</div></div>`;
+      if(m[1]===null) return `<div class="metric"><div class="k">${m[0]}</div><div class="n">${m[2]}</div></div>`;
+      const isR=/\(r\)/.test(m[0]);
+      const val=isR?fmt(m[1]/100,2):m[1]+'%';
+      return `<div class="metric"><div class="k">${m[0]}</div><div class="n">${val}</div><div class="bar"><i style="width:${m[1]}%"></i></div></div>`;
+    }).join('');
+    const meta=c.meta.map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('');
+    const refs=c.ref.map(k=>`<a href="https://doi.org/${REF[k].doi}" target="_blank" rel="noopener">doi.org/${REF[k].doi}</a>`).join('<br>');
+    return `<article class="card"><div class="head"><h3>${c.name}</h3><span class="chip c-na">${c.cat==='quant'?'quantitativo':c.cat==='semi'?'semiquantitativo':'qualitativo'}</span></div>
+    <div class="cut">${c.cut}</div><div class="metrics">${ms}</div><dl class="meta">${meta}</dl>
+    <div class="caveat">${c.cav}</div><div class="trust"><b>Quanto mi fido:</b> ${c.trust}</div>
+    <div class="foot"><div>${refs}</div><button type="button" class="btn" data-sim="${c.id}">Vedi nel simulatore</button></div></article>`;
+  }).join('');
+  document.querySelectorAll('[data-sim]').forEach(b=>b.addEventListener('click',()=>{
+    const c=CARDS.find(x=>x.id===b.dataset.sim);
+    if(c.sim.les){S.les=c.sim.les;syncMechUI();}
+    ['color','vc','pisa'].forEach(k=>{if(c.sim[k]){S[k]=true;S.anat=false;}});
+    syncToggles();
+    redrawAll();
+    document.getElementById('simulatore').scrollIntoView({behavior:reduced?'auto':'smooth'});
+    const key={vca:'vc',vol:'rvol'}[c.id]||c.id;
+    const row=document.querySelector(`#rows tr[data-k="${key}"]`);
+    if(row){row.classList.add('flash');setTimeout(()=>row.classList.remove('flash'),1600);}
+  }));
+}
+document.querySelectorAll('#filters button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#filters button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderCards(b.dataset.f);
+}));
+
+/* ---------- casi ---------- */
+const CASES=[
+ {t:'Uomo di 58 anni, flail P2. Getto eccentrico che scorre lungo il setto interatriale, area 27% dell\'atrio. VC 8 mm.',
+  o:['Lieve, il getto è piccolo','Moderata','Severa','Non valutabile senza TEE'],a:2,
+  f:'Severa. Flail e VC ≥ 7 mm sono due segni specifici. L\'area piccola è l\'effetto Coanda del getto a parete.',st:{les:'flail',side:'post',grade:'severa'}},
+ {t:'Donna di 45 anni, Barlow. PISA con raggio 10 mm in un fotogramma mesotelesistolico, VC 8 mm, CW tardivo, volume rigurgitante 38 mL.',
+  o:['Severa, PISA e VC lo dicono','Probabilmente moderata, il volume conta di più','Lieve','Serve un ecostress'],a:1,
+  f:'Nel prolasso telesistolico l\'EROA del singolo fotogramma sovrastima. Il volume rigurgitante integra la durata. Se la decisione dipende da questo, RM o PISA seriata.',st:{les:'prolapse',side:'both',grade:'severa'}},
+ {t:'Prolasso A2. Getto verso la parete laterale, VC 6 mm, raggio PISA 7,5 mm, S smussata, onda E 1,0 m/s.',
+  o:['Severa','Intermedia: quantificare e integrare','Lieve','Esclusa la severa per l\'onda E'],a:1,
+  f:'Tutto è in zona grigia. Nessun segno specifico per un estremo o per l\'altro. Quantifica con due metodi e, se cambia la gestione, RM.',st:{les:'prolapse',side:'ant',grade:'moderata'}},
+ {t:'Getto centrale che sembra riempire più di metà dell\'atrio. Gain colore all\'85%, Nyquist 40. Vena polmonare con S dominante, pattern A dominante, atrio 30 mL/m².',
+  o:['Severa, l\'area è oltre il 50%','Il getto è gonfiato dal gain: rifai l\'acquisizione','Severa acuta','Moderata certa'],a:1,
+  f:'Con gain alto il getto fiorisce e il rumore entra nel box. Gli altri segni (S dominante, A dominante, atrio normale) vanno tutti contro la severa. Abbassa il gain fino a far sparire il rumore e rimisura.',st:{les:'prolapse',side:'both',grade:'moderata',gain:85,ov:{pv:'lieve',ea:'lieve',la:'lieve'}}},
+ {t:'IM primitiva severa, asintomatico, basso rischio, riparabile. FEVS 64%, DTSVS 38 mm, atrio 65 mL/m², FA parossistica, PAPs 35 mmHg, IT lieve.',
+  o:['Nessuna indicazione, follow-up','Riparazione classe IIa','Riparazione classe I','Solo TEER'],a:1,
+  f:'Due criteri su quattro (FA e atrio dilatato). Secondo la sintesi delle linee guida ESC/EACTS 2025 servono almeno 3 criteri per la classe I; con meno è IIa. Verifica il testo originale.',st:{les:'prolapse',side:'post',grade:'severa'}}
+];
+document.getElementById('caseList').innerHTML=CASES.map((c,i)=>`<div class="case"><h3>Caso ${i+1}</h3><p>${c.t}</p><div class="opts">${c.o.map((o,j)=>`<button type="button" data-c="${i}" data-o="${j}">${o}</button>`).join('')}</div><div class="fb" id="fb${i}" hidden></div><div><button type="button" class="btn" data-load="${i}">Carica nel simulatore</button></div></div>`).join('');
+document.querySelectorAll('[data-c]').forEach(b=>b.addEventListener('click',()=>{
+  const i=+b.dataset.c,j=+b.dataset.o,c=CASES[i];
+  b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('right','wrong'));
+  b.classList.add(j===c.a?'right':'wrong');
+  if(j!==c.a) b.parentElement.querySelectorAll('button')[c.a].classList.add('right');
+  const fb=document.getElementById('fb'+i);fb.hidden=false;fb.textContent=(j===c.a?'Corretto. ':'Non proprio. ')+c.f;
+}));
+document.querySelectorAll('[data-load]').forEach(b=>b.addEventListener('click',()=>{loadState(CASES[+b.dataset.load].st);document.getElementById('simulatore').scrollIntoView({behavior:reduced?'auto':'smooth'});}));
+
+document.getElementById('refs').innerHTML=Object.values(REF).map(r=>`<li>${r.t} <a href="https://doi.org/${r.doi}" target="_blank" rel="noopener">doi.org/${r.doi}</a></li>`).join('');
+
+/* ---------- calcolatore bayesiano ---------- */
+const BROWS=[
+ {id:'vc2d',fam:'orifizio',nm:'Vena contracta 2D ≥ 7 mm',s:null,sp:null,src:'Hall 1997: VC biplana ≥ 5 mm senza falsi positivi, ma sensibilità e specificità non riportate. Inserisci tu i valori.'},
+ {id:'vca',fam:'orifizio',nm:'Area VC 3D ≥ 0,41 cm²',s:97,sp:82,src:'Zeng 2011, 83 pz, contro metodo integrativo 2D'},
+ {id:'pisa',fam:'orifizio',nm:'Raggio PISA ≥ 7 mm',s:82,sp:94,src:'Miró Palau 1999, 28 pz, contro grado angiografico III–IV, Nyquist 25 cm/s'},
+ {id:'jet',fam:'getto',nm:'Area getto > 40% dell\'atrio',s:93,sp:94,src:'Helmcke 1987, 147 pz, contro angiografia; specificità = limite inferiore calcolato da me dai conteggi'},
+ {id:'pv',fam:'emo',nm:'Inversione S in vena polmonare (TTE)',s:61,sp:92,src:'Enriquez-Sarano 1999, 128 pz, contro EROA ≥ 35 mm²'},
+ {id:'e',fam:'emo',nm:'Onda E > 1,2 m/s',s:86,sp:86,src:'Thomas 1998, 102 pz, retrospettivo'},
+ {id:'vti',fam:'emo',nm:'VTI mitrale / VTI aortico > 1,3',s:80,sp:87,src:'Lesbre e Tribouilloy 1991, 37 pz, endpoint FR > 40%'},
+ {id:'cw',fam:'emo',nm:'CW denso e triangolare',s:null,sp:null,src:'Nessuno studio di accuratezza trovato. Inserisci tu i valori.'},
+ {id:'flail',fam:'anat',nm:'Flail o rottura di corda',s:null,sp:null,src:'Segno specifico per consenso ASE ed EACVI, nessun numero verificato. Inserisci tu i valori.'},
+ {id:'la',fam:'atrio',nm:'Atrio ≥ 60 mL/m²',s:null,sp:null,src:'Hall 1997: l\'atrio non correla in modo indipendente con l\'EROA. Dato prognostico più che diagnostico.'},
+ {id:'mri',fam:'comp',nm:'MR Index ≥ 2,2',s:90,sp:88,src:'Thomas 1999, 103 pz; indice composito che include getto, PISA, CW, PAPs, vena polmonare e atrio'}
+];
+const FAM={orifizio:'orifizio',getto:'getto colore',emo:'conseguenze emodinamiche',anat:'anatomia',atrio:'atrio',comp:'indice composito'};
+const BEX={pisa:'pos',pv:'neg',e:'pos'};
+const BS={pre:30,mode:'partial',useMri:false,st:Object.assign({},BEX),touched:false};
+function renderBrows(){
+  document.getElementById('brows').innerHTML=BROWS.map(r=>{
+    const st=BS.st[r.id]||'na';
+    const btn=(v,t)=>`<button type="button" data-id="${r.id}" data-v="${v}" aria-pressed="${st===v}">${t}</button>`;
+    return `<div class="brow" data-row="${r.id}"><span class="nm">${r.nm}</span><span class="st">${btn('pos','Presente')}${btn('neg','Assente')}${btn('na','N.V.')}</span>
+    <span class="ss"><label for="bs_${r.id}">Sens</label><input type="number" id="bs_${r.id}" min="1" max="99" step="1" value="${r.s??''}" placeholder="–"> %
+    <label for="bp_${r.id}">Spec</label><input type="number" id="bp_${r.id}" min="1" max="99" step="1" value="${r.sp??''}" placeholder="–"> %
+    <span id="lr_${r.id}"></span></span>
+    <span class="src">${r.src} · famiglia: ${FAM[r.fam]}</span></div>`;
+  }).join('');
+}
+function bayCalc(){
+  const pre=BS.pre/100;let odds=pre/(1-pre);
+  const ev=[];
+  BROWS.forEach(r=>{
+    const s=parseFloat(document.getElementById('bs_'+r.id).value),sp=parseFloat(document.getElementById('bp_'+r.id).value);
+    const ok=s>0&&s<100&&sp>0&&sp<100;
+    const lp=ok?(s/100)/(1-sp/100):null, ln=ok?(1-s/100)/(sp/100):null;
+    document.getElementById('lr_'+r.id).textContent=ok?`LR+ ${fmt(lp,1)} · LR− ${fmt(ln,2)}`:'non usato senza sens e spec';
+    const st=BS.st[r.id]||'na';
+    if(st==='na') return;
+    if(!ok){ev.push({r,st,skip:'mancano sensibilità e specificità'});return;}
+    ev.push({r,st,lr:st==='pos'?lp:ln});
+  });
+  const valid=ev.filter(e=>!e.skip);
+  valid.forEach(e=>{e.use=true;e.w=1;});
+  // MR Index: alternativa ai singoli parametri che contiene, non un parametro in piu
+  const MRI_COVERS=e=>['getto','emo','atrio'].includes(e.r.fam)||e.r.id==='pisa';
+  valid.forEach(e=>{
+    if(e.r.fam==='comp'&&!BS.useMri){e.use=false;e.why='MR Index spento: attivalo per usarlo al posto dei singoli';}
+    if(BS.useMri&&e.r.fam!=='comp'&&MRI_COVERS(e)&&valid.some(x=>x.r.fam==='comp')){e.use=false;e.why='sostituito dal MR Index';}
+  });
+  if(BS.mode!=='none'){
+    const byF={};
+    valid.filter(e=>e.use).forEach(e=>{(byF[e.r.fam]=byF[e.r.fam]||[]).push(e);});
+    Object.values(byF).forEach(arr=>{
+      arr.sort((a,b)=>Math.abs(Math.log(b.lr))-Math.abs(Math.log(a.lr)));
+      arr.forEach((e,i)=>{if(i===0)return;if(BS.mode==='max'){e.use=false;e.why='stessa famiglia di un parametro più informativo';}else{e.w=1/(i+1);}});
+    });
+  }
+  valid.filter(e=>e.use).forEach(e=>{e.lre=Math.pow(e.lr,e.w);odds*=e.lre;});
+  const post=odds/(1+odds)*100;
+  document.getElementById('bayP').textContent=post>99?'> 99%':post<1?'< 1%':Math.round(post)+'%';
+  document.getElementById('bayFill').style.left=clamp(post,0,100)+'%';
+  document.getElementById('bayPre').style.left=BS.pre+'%';
+  document.getElementById('preOut').textContent=BS.pre+'%';
+  const used=valid.filter(e=>e.use);
+  let v;
+  if(!used.length) v=['Nessun parametro usato','La probabilità resta quella pre-test. Segna almeno un parametro con sensibilità e specificità.'];
+  else if(post<20) v=['IM severa improbabile','La combinazione dei parametri abbassa molto la probabilità.'];
+  else if(post>80) v=['IM severa probabile','La combinazione dei parametri la rende molto probabile. Conferma con la quantificazione.'];
+  else v=['Incerta','Zona grigia: quantifica con due metodi e, se cambia la gestione, RM.'];
+  document.getElementById('bayV').innerHTML=`<b>${v[0]}.</b> ${v[1]}`+(BS.touched?'':'<br><span style="color:var(--muted)">Esempio precaricato: PISA ampia, onda E alta, nessuna inversione in vena polmonare.</span>');
+  document.getElementById('bayRows').innerHTML=ev.map(e=>{
+    if(e.skip) return `<tr><td>${e.r.nm}</td><td class="v">–</td><td><span class="chip c-na">escluso: ${e.skip}</span></td></tr>`;
+    const eff=e.lr>1?`<span class="chip c-sev">verso severa</span>`:`<span class="chip c-ok">contro severa</span>`;
+    const lrTxt=e.use&&e.w<1?`${fmt(e.lr,2)} → ${fmt(e.lre,2)}`:fmt(e.lr,2);
+    const wTxt=e.use&&e.w<1?` <span class="chip c-na">peso ${fmt(e.w,2)}, stessa famiglia</span>`:'';
+    return `<tr><td>${e.r.nm} <span style="color:var(--muted)">(${e.st==='pos'?'presente':'assente'})</span></td><td class="v">${lrTxt}</td><td>${e.use?eff+wTxt:`<span class="chip c-na">non contato: ${e.why}</span>`}</td></tr>`;
+  }).join('')||'<tr><td colspan="3" style="color:var(--muted)">Nessun parametro segnato.</td></tr>';
+  const w=[];
+  if(used.some(e=>e.lr>2)&&used.some(e=>e.lr<0.5)) w.push('Parametri discordanti: alcuni spingono verso la severa, altri contro. Il numero finale nasconde un conflitto da risolvere con la quantificazione o la RM.');
+  if(BS.mode==='none'){const fams={};used.forEach(e=>fams[e.r.fam]=(fams[e.r.fam]||0)+1);if(Object.values(fams).some(n=>n>1)) w.push('Stai moltiplicando a peso pieno parametri della stessa famiglia: la probabilità sarà più estrema del giusto.');}
+  if(BS.useMri&&used.some(e=>e.r.fam==='comp')) w.push('Con il MR Index attivo, getto, PISA, vena polmonare, onda E, VTI e atrio non contano perché sono già dentro l\'indice.');
+  if(used.some(e=>['pisa','vti'].includes(e.r.id))) w.push('Raggio PISA e VTI ratio vengono da studi con endpoint diversi dalla definizione attuale di severa: il loro LR è un\'approssimazione.');
+  document.getElementById('bayWarn').innerHTML=w.length?'<b>Attenzione:</b> '+w.join(' '):'';
+}
+function initBay(){
+  renderBrows();
+  const box=document.getElementById('brows');
+  box.addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(!b)return;BS.st[b.dataset.id]=b.dataset.v;BS.touched=true;b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));bayCalc();});
+  box.addEventListener('input',()=>{BS.touched=true;bayCalc();});
+  document.getElementById('pre').addEventListener('input',e=>{BS.pre=+e.target.value;bayCalc();});
+  document.querySelectorAll('#bayMode button').forEach(b=>b.addEventListener('click',()=>{BS.mode=b.dataset.v;document.querySelectorAll('#bayMode button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));bayCalc();}));
+  document.getElementById('useMri').addEventListener('click',e=>{BS.useMri=!BS.useMri;e.currentTarget.setAttribute('aria-pressed',String(BS.useMri));bayCalc();});
+  document.getElementById('bayReset').addEventListener('click',()=>{BS.st={};BS.touched=true;renderBrows();bayCalc();});
+  bayCalc();
+}
+
+/* ---------- M-TEER ---------- */
+const G3={G:['Favorevole','c-ok','var(--ok)'],Y:['Impegnativa','c-mid','var(--mid)'],R:['Sfavorevole','c-sev','var(--sev)']};
+function buildForm(id,fields){
+  document.getElementById(id).innerHTML=fields.map(f=>{
+    if(f.hd) return `<div class="hd" data-only="${f.only||''}">${f.hd}</div>`;
+    const ctl=f.opts?`<select id="${f.id}">${f.opts.map(o=>`<option value="${o[0]}"${o[0]===f.v?' selected':''}>${o[1]}</option>`).join('')}</select>`:`<input type="number" id="${f.id}" value="${f.v}" step="${f.step||1}" min="0">`;
+    return `<label for="${f.id}" data-only="${f.only||''}">${f.lab}</label><span data-only="${f.only||''}">${ctl}</span>`;
+  }).join('');
+}
+const val=id=>{const el=document.getElementById(id);return el.tagName==='SELECT'?el.value:parseFloat(el.value);};
+const ANAT=[
+ {id:'a_et',lab:'Eziologia',opts:[['prim','Primaria (degenerativa)'],['vsmr','Secondaria ventricolare'],['asmr','Secondaria atriale']],v:'prim'},
+ {id:'a_sede',lab:'Sede del getto',opts:[['c','Centrale, A2/P2'],['comm','Commissurale, A1/P1 o A3/P3'],['multi','Multisegmentale, Barlow']],v:'c'},
+ {id:'a_mva',lab:'Area valvolare planimetrica (cm²)',v:4.6,step:0.1},
+ {id:'a_grad',lab:'Gradiente medio basale (mmHg)',v:2,step:0.5},
+ {id:'a_pml',lab:'Lunghezza del lembo posteriore (mm)',v:12},
+ {id:'a_calc',lab:'Calcificazione',opts:[['no','Assente'],['ann','Anulare o fuori dalla zona di presa'],['grasp','Nella zona di presa']],v:'no'},
+ {id:'a_cleft',lab:'Cleft del lembo posteriore',opts:[['no','Assente'],['si','Presente (≥ 50% della profondità)']],v:'no'},
+ {hd:'Solo primaria',only:'prim'},
+ {id:'a_gap',lab:'Flail gap (mm)',v:6,only:'prim'},
+ {id:'a_wid',lab:'Ampiezza del flail (mm)',v:11,only:'prim'},
+ {hd:'Solo secondaria',only:'sec'},
+ {id:'a_tent',lab:'Tenting height (mm)',v:8,only:'sec'},
+ {id:'a_coap',lab:'Lunghezza di coaptazione (mm)',v:3,only:'sec'}
+];
+function calcAnat(){
+  const et=val('a_et'),sec=et!=='prim';
+  document.querySelectorAll('#anat [data-only]').forEach(el=>{const o=el.dataset.only;el.hidden=o==='prim'?sec:o==='sec'?!sec:false;});
+  const R=[];
+  const sede=val('a_sede');R.push(['Sede del getto',{c:'A2/P2',comm:'commissurale',multi:'multisegmentale'}[sede],{c:'G',comm:'Y',multi:'R'}[sede]]);
+  const mva=val('a_mva');R.push(['Area valvolare',fmt(mva)+' cm²',mva>4?'G':mva>=3?'Y':'R']);
+  const gr=val('a_grad');R.push(['Gradiente medio',fmt(gr)+' mmHg',gr>4?'Y':'G']);
+  const pml=val('a_pml');R.push(['Lembo posteriore',fmt(pml,0)+' mm',pml>=10?'G':pml>=7?'Y':'R']);
+  const ca=val('a_calc');R.push(['Calcio',{no:'assente',ann:'anulare o fuori presa',grasp:'zona di presa'}[ca],{no:'G',ann:'Y',grasp:'R'}[ca]]);
+  const cl=val('a_cleft');R.push(['Cleft',cl==='si'?'presente':'assente',cl==='si'?'Y':'G']);
+  if(!sec){const g=val('a_gap'),w=val('a_wid');R.push(['Flail gap',fmt(g,0)+' mm',g<10?'G':'Y']);R.push(['Ampiezza flail',fmt(w,0)+' mm',w<15?'G':'Y']);}
+  else{const t=val('a_tent'),c=val('a_coap');R.push(['Tenting height',fmt(t,0)+' mm',t<10?'G':'Y']);R.push(['Coaptazione',fmt(c,0)+' mm',c>2?'G':'Y']);}
+  const worst=R.some(r=>r[2]==='R')?'R':R.some(r=>r[2]==='Y')?'Y':'G';
+  const txt={G:'Anatomia favorevole: adatta anche a un centro con meno esperienza.',Y:'Anatomia impegnativa: meglio un centro con esperienza; può servire più di un device.',R:'Anatomia complessa: valutazione caso per caso in un centro ad alto volume, o alternative come annuloplastica transcatetere o sostituzione valvolare.'}[worst];
+  const note=et==='prim'?' Vale solo per pazienti ad alto rischio chirurgico: se il rischio è accettabile, la scelta è la riparazione chirurgica.':et==='asmr'?' Nella secondaria atriale la TEER è classe IIb: in un paziente operabile si preferisce la chirurgia.':'';
+  document.getElementById('anatTL').innerHTML=`<span class="dot" style="background:${G3[worst][2]}"></span><div><b>${G3[worst][0]}.</b> ${txt}${note}</div>`;
+  document.getElementById('anatRows').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td class="v">${r[1]}</td><td><span class="chip ${G3[r[2]][1]}">${G3[r[2]][0]}</span></td></tr>`).join('');
+  ANAT_LEVEL=worst;
+  calcCoapt();
+}
+let ANAT_LEVEL='G';
+const COAPT=[
+ {id:'c_fe',lab:'FEVS (%)',v:35},
+ {id:'c_dts',lab:'Diametro telesistolico VS (mm)',v:55},
+ {id:'c_eroa',lab:'EROA (mm²)',v:35},
+ {id:'c_rv',lab:'Volume rigurgitante (mL)',v:50},
+ {id:'c_nyha',lab:'Classe NYHA',opts:[['1','I'],['2','II'],['3','III'],['4a','IV ambulatoriale'],['4n','IV non ambulatoriale']],v:'3'},
+ {id:'c_gdmt',lab:'Terapia medica a dosi massime tollerate',opts:[['si','Sì'],['no','No']],v:'si'},
+ {id:'c_crt',lab:'CRT',opts:[['ni','Non indicata'],['si','Impiantata'],['no','Indicata, non impiantata']],v:'ni'},
+ {id:'c_hosp',lab:'Ricovero per scompenso nell\'ultimo anno',opts:[['si','Sì'],['no','No']],v:'si'},
+ {id:'c_bnp',lab:'Peptidi natriuretici elevati',opts:[['si','Sì'],['no','No']],v:'si'}
+];
+function calcCoapt(){
+  const fe=val('c_fe'),d=val('c_dts'),e=val('c_eroa'),rv=val('c_rv'),ny=val('c_nyha');
+  const mr=(e>40&&rv>60)?'4+, severa':(e>30&&rv>45)?'3+, moderata-severa':null;
+  const R=[
+    ['FEVS 20–50%',fmt(fe,0)+'%',fe>=20&&fe<=50],
+    ['DTSVS sotto 70 mm',fmt(d,0)+' mm',d<70],
+    ['IM 3+ (EROA > 30 mm² e RVol > 45 mL) o 4+ (> 40 e > 60)',mr||(fmt(e,0)+' mm², '+fmt(rv,0)+' mL'),!!mr],
+    ['NYHA II–IV ambulatoriale',{1:'I',2:'II',3:'III','4a':'IV amb.','4n':'IV non amb.'}[ny],['2','3','4a'].includes(ny)],
+    ['Terapia medica ottimizzata',val('c_gdmt')==='si'?'sì':'no',val('c_gdmt')==='si'],
+    ['CRT se indicata',{ni:'non indicata',si:'impiantata',no:'mancante'}[val('c_crt')],val('c_crt')!=='no'],
+    ['Ricovero per scompenso nell\'ultimo anno',val('c_hosp')==='si'?'sì':'no',val('c_hosp')==='si'],
+    ['Peptidi natriuretici elevati',val('c_bnp')==='si'?'sì':'no',val('c_bnp')==='si'],
+    ['Anatomia adatta (calcolatore sopra)',G3[ANAT_LEVEL][0],ANAT_LEVEL!=='R']
+  ];
+  const fail=R.filter(r=>!r[2]);
+  const etSec=val('a_et')==='vsmr';
+  document.getElementById('coaptTL').innerHTML=`<span class="dot" style="background:${fail.length?'var(--mid)':'var(--ok)'}"></span><div><b>${fail.length?'Non COAPT-like':'Profilo COAPT-like'}.</b> ${fail.length?'Non soddisfatto: '+fail.map(r=>r[0]).join('; ')+'.':'Tutti i criteri di inclusione principali sono soddisfatti.'}${etSec?'':' <span style="color:var(--muted)">Nota: COAPT riguarda solo la secondaria ventricolare; nel calcolatore anatomico hai indicato un\'altra eziologia.</span>'}</div>`;
+  document.getElementById('coaptRows').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td class="v" style="white-space:normal">${r[1]}</td><td><span class="chip ${r[2]?'c-ok':'c-sev'}">${r[2]?'sì':'no'}</span></td></tr>`).join('');
+}
+const PROP=[
+ {id:'p_vtd',lab:'Volume telediastolico VS (mL)',v:200},
+ {id:'p_fe',lab:'FEVS (%)',v:32},
+ {id:'p_eroa',lab:'EROA (mm²)',v:35},
+ {id:'p_rv',lab:'Volume rigurgitante (mL)',v:42},
+ {id:'p_vti',lab:'VTI del getto rigurgitante (cm)',v:120}
+];
+function calcProp(){
+  const V=val('p_vtd'),fe=val('p_fe')/100,E=val('p_eroa'),RV=val('p_rv'),VTI=val('p_vti');
+  const sv=V*fe, eExp=sv*0.5/VTI*100, r1=E/V, r2=RV/V*100, rf=sv>0?RV/sv*100:0, rel=E/eExp;
+  const sig=[r1>0.14,r2>20,E>eExp];
+  const n=sig.filter(Boolean).length;
+  const lvl=n>=2?['Sproporzionata','var(--sev)','L\'IM è più grande di quanto il ventricolo spieghi: profilo più vicino a COAPT, più probabile beneficio da una terapia diretta sulla valvola.']:n===0?['Proporzionata','var(--ok)','L\'IM è quella attesa per la dilatazione del ventricolo: profilo più vicino a MITRA-FR, prima la terapia che riduce i volumi (farmaci, CRT).']:['Al confine','var(--mid)','Gli indici non concordano: rivedi le misure, in particolare il volume telediastolico.'];
+  document.getElementById('propTL').innerHTML=`<span class="dot" style="background:${lvl[1]}"></span><div><b>${lvl[0]}.</b> ${lvl[2]}</div>`;
+  const R=[
+    ['EROA / VTD',fmt(r1,2)+' mm²/mL','> 0,14 sproporzionata (Berrill)',sig[0]],
+    ['RVol / VTD',fmt(r2,0)+'%','> 20% sproporzionata (Namazi)',sig[1]],
+    ['EROA misurata / attesa',fmt(rel,2)+' ('+fmt(eExp,0)+' mm² attesi)','> 1 sproporzionata (Grayburn)',sig[2]],
+    ['Frazione rigurgitante stimata',fmt(rf,0)+'%','RVol / (VTD × FE), mio calcolo',null]
+  ];
+  document.getElementById('propRows').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td class="v" style="white-space:normal">${r[1]}</td><td style="font-size:13px">${r[2]}${r[3]==null?'':` <span class="chip ${r[3]?'c-sev':'c-ok'}">${r[3]?'sì':'no'}</span>`}</td></tr>`).join('');
+  drawProp(V,E,fe,VTI);
+}
+function drawProp(V,E,fe,VTI){
+  const W=420,H=260,L=46,B=36,T=14,Rr=14;
+  const x=v=>L+(v-100)/(350-100)*(W-L-Rr), y=e=>H-B-(e/70)*(H-B-T);
+  let s='';
+  for(let v=100;v<=350;v+=50){s+=`<line x1="${x(v)}" y1="${T}" x2="${x(v)}" y2="${H-B}" style="stroke:var(--line)"/><text x="${x(v)}" y="${H-B+16}" text-anchor="middle" style="fill:var(--muted);font:11px var(--f-mono)">${v}</text>`;}
+  for(let e=0;e<=70;e+=10){s+=`<line x1="${L}" y1="${y(e)}" x2="${W-Rr}" y2="${y(e)}" style="stroke:var(--line)"/><text x="${L-6}" y="${y(e)+4}" text-anchor="end" style="fill:var(--muted);font:11px var(--f-mono)">${e}</text>`;}
+  s+=`<text x="${(L+W-Rr)/2}" y="${H-4}" text-anchor="middle" style="fill:var(--muted);font:11px var(--f-body)">Volume telediastolico VS (mL)</text>`;
+  s+=`<text x="12" y="${T+(H-B-T)/2}" transform="rotate(-90 12 ${T+(H-B-T)/2})" text-anchor="middle" style="fill:var(--muted);font:11px var(--f-body)">EROA (mm²)</text>`;
+  // esempi di Grayburn
+  s+=`<rect x="${x(220)}" y="${y(32)}" width="${x(250)-x(220)}" height="${y(28)-y(32)}" style="fill:color-mix(in srgb,var(--ok) 30%,transparent);stroke:var(--ok)"/>`;
+  s+=`<rect x="${x(160)}" y="${y(40)}" width="${x(200)-x(160)}" height="${y(30)-y(40)}" style="fill:color-mix(in srgb,var(--sev) 25%,transparent);stroke:var(--sev)"/>`;
+  s+=`<text x="${x(220)}" y="${y(28)+13}" style="fill:var(--ok);font:10.5px var(--f-body)">proporzionata (es.)</text>`;
+  s+=`<text x="${x(160)}" y="${y(40)-5}" style="fill:var(--sev);font:10.5px var(--f-body)">sproporzionata (es.)</text>`;
+  // retta 0,14
+  s+=`<line x1="${x(100)}" y1="${y(14)}" x2="${x(350)}" y2="${y(49)}" style="stroke:var(--muted);stroke-dasharray:4 4"/><text x="${x(104)}" y="${y(14.6)-7}" style="fill:var(--muted);font:10.5px var(--f-mono)">EROA/VTD 0,14</text>`;
+  // curva attesa
+  let d='';for(let v=100;v<=350;v+=5){const e=v*fe*0.5/VTI*100;d+=(d?'L':'M')+x(v).toFixed(1)+','+y(Math.min(70,e)).toFixed(1);}
+  s+=`<path d="${d}" style="fill:none;stroke:var(--caliper);stroke-width:2"/><text x="${x(350)}" y="${y(Math.min(70,350*fe*0.5/VTI*100))+14}" text-anchor="end" style="fill:var(--caliper);font:10.5px var(--f-mono)">attesa, FR 50%</text>`;
+  // paziente
+  const pv=clamp(V,100,350),pe=clamp(E,0,70);
+  s+=`<circle cx="${x(pv)}" cy="${y(pe)}" r="6" style="fill:var(--fg);stroke:var(--bg);stroke-width:2"/><text x="${x(pv)+9}" y="${y(pe)-8}" style="fill:var(--fg);font:600 11px var(--f-body)">paziente</text>`;
+  document.getElementById('propChart').innerHTML=s;
+}
+function initTeer(){
+  buildForm('anat',ANAT);buildForm('coapt',COAPT);buildForm('prop',PROP);
+  document.getElementById('anat').addEventListener('input',calcAnat);document.getElementById('anat').addEventListener('change',calcAnat);
+  document.getElementById('coapt').addEventListener('input',calcCoapt);document.getElementById('coapt').addEventListener('change',calcCoapt);
+  document.getElementById('prop').addEventListener('input',calcProp);
+  calcAnat();calcProp();
+}
+
+renderCards('all');
+init();
+initBay();
+initTeer();
+})();
+</script>
+
+</body>
+</html>

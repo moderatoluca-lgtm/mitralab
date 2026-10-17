@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Accuratezza parametri IM</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: foglio di riferimento. Intestazione breve, filtri, una tabella ordinabile, poi la scheda sull'atrio e le note di metodo. Stessa console scura di MitraLab. */
+:root{
+  --bg:#0d1319; --panel:#141c24; --panel-2:#1a242e; --line:#26333f;
+  --fg:#dfe7ec; --muted:#8b9ba8; --caliper:#f0c04a; --link:#8fc3f0;
+  --ok:#6fbf8e; --mid:#e3a43c; --sev:#e2584c;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1400px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 40px}
+a{color:var(--link)}
+.eyebrow{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--caliper)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,4.6vw,44px);line-height:1.05;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:28px;margin:36px 0 8px}
+.lede{max-width:72ch;margin:0 0 18px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin-bottom:16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.bar button{font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--fg);background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 10px;cursor:pointer}
+.bar button[aria-pressed=true]{border-color:var(--caliper);color:var(--caliper);background:#221e12}
+.bar input{font-family:var(--f-body);font-size:14px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:7px 10px;min-width:0;flex:1 1 220px;max-width:340px}
+button:focus-visible,input:focus-visible,a:focus-visible,th:focus-visible{outline:2px solid var(--caliper);outline-offset:2px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;min-width:1180px;font-size:14px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+thead th{position:sticky;top:0;background:var(--panel);font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+thead th.sort{cursor:pointer}
+thead th.sort::after{content:" ↕";opacity:.5}
+thead th[aria-sort=ascending]::after{content:" ↑";opacity:1;color:var(--caliper)}
+thead th[aria-sort=descending]::after{content:" ↓";opacity:1;color:var(--caliper)}
+tbody tr:hover td{background:var(--panel)}
+tr.grp td{background:var(--panel-2);font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--caliper)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+td.num.na{color:var(--muted);font-family:var(--f-body);text-align:left;white-space:normal;font-size:13px}
+td.p{font-weight:600}
+td.cut{font-family:var(--f-mono);font-size:13px;color:var(--caliper);white-space:nowrap}
+td.small{font-size:13px;color:var(--fg)}
+td.doi a{font-size:12.5px;word-break:break-all}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+.hi{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 55%,transparent);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.me{color:var(--mid);border-color:color-mix(in srgb,var(--mid) 55%,transparent);background:color-mix(in srgb,var(--mid) 12%,transparent)}
+.lo{color:var(--sev);border-color:color-mix(in srgb,var(--sev) 55%,transparent);background:color-mix(in srgb,var(--sev) 12%,transparent)}
+.src{font-size:12px;color:var(--muted);display:block;margin-top:3px}
+.atrio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:860px){.atrio{grid-template-columns:minmax(0,1fr)}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.box h3{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0 0 6px}
+.box p{margin:0 0 8px;font-size:14.5px}
+.box .k{font-family:var(--f-mono);color:var(--caliper);font-size:13px}
+.notes{max-width:78ch}
+.notes p{margin:0 0 10px}
+.count{font-size:13px;color:var(--muted)}
+</style>
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="eyebrow">Insufficienza mitralica primitiva · foglio di riferimento</div>
+  <h1>Sensibilità e specificità di ogni parametro</h1>
+  <p class="lede">Ogni riga è un cut-off testato in uno studio preciso, contro uno standard di riferimento preciso. Se lo studio non riporta sensibilità e specificità lo trovi scritto, con il dato che riporta al loro posto. I numeri vengono dagli abstract recuperati da PubMed; dove li ho ricavati io dai conteggi, la colonna "Origine" lo dice.</p>
+  <div class="legend">
+    <span><span class="chip hi">Alta</span> campione ampio o coorte prospettica, riferimento indipendente</span>
+    <span><span class="chip me">Media</span> dato coerente ma piccolo o con riferimento ecocardiografico</span>
+    <span><span class="chip lo">Bassa</span> campione minimo, endpoint diverso da quello attuale o nessun numero</span>
+  </div>
+  <div class="bar" id="filters"></div>
+  <div class="bar"><label for="q" class="count">Cerca</label><input id="q" type="search" placeholder="parametro, autore, cut-off"><span class="count" id="cnt"></span></div>
+  <div class="tw">
+    <table>
+      <thead><tr>
+        <th>Parametro</th><th>Cut-off</th><th>Cosa predice e contro cosa</th>
+        <th class="sort" data-k="sens" tabindex="0" aria-sort="none">Sens.</th>
+        <th class="sort" data-k="spec" tabindex="0" aria-sort="none">Spec.</th>
+        <th>Altro dato</th><th>Studio</th><th>Origine</th><th class="sort" data-k="trust" tabindex="0" aria-sort="none">Fiducia</th><th>Limite principale</th><th>DOI</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+
+  <h2>Atrio dilatato o no</h2>
+  <p class="lede">L'atrio non misura il rigurgito, misura quanto a lungo e con quale pressione l'atrio lo ha ricevuto. Per questo funziona male come test di severità e bene come marcatore di conseguenze e di timing.</p>
+  <div class="atrio">
+    <div class="box"><h3>Atrio normale</h3><p class="k">AS indicizzato ≤ 34 mL/m²</p><p>In un'IM cronica rende poco probabile la severa: è un argomento di esclusione nelle raccomandazioni ASE 2017. Se gli altri segni dicono severa con atrio normale, pensa a un'IM acuta (rottura di corda recente, endocardite) o rivedi le misure.</p><p class="src">Fonte: raccomandazioni ASE 2017. Nessuna sensibilità o specificità trovata per questo uso.</p></div>
+    <div class="box"><h3>Atrio dilatato</h3><p class="k">40–59 mL/m²</p><p>Compatibile con IM significativa cronica, ma anche con FA, disfunzione diastolica, età, atleta. Hall 1997 non ha trovato una correlazione indipendente tra dimensione atriale ed EROA o volume rigurgitante.</p><p class="src">Fonte: Hall 1997, abstract PubMed.</p></div>
+    <div class="box"><h3>Atrio molto dilatato</h3><p class="k">≥ 60 mL/m²</p><p>In 492 pazienti con IM organica in ritmo sinusale, sopravvivenza a 5 anni del 53% contro il 76% atteso; mortalità 2,8 volte quella con atrio &lt; 40 mL/m² in terapia medica. Dopo la chirurgia l'eccesso di rischio spariva. Dal 2025 è uno dei criteri ESC per la classe I nell'asintomatico.</p><p class="src">Fonte: Le Tourneau 2010, abstract PubMed; sintesi delle linee guida ESC/EACTS 2025.</p></div>
+  </div>
+
+  <h2>Note di metodo</h2>
+  <div class="notes">
+    <p>Sensibilità e specificità dipendono dallo standard di riferimento. Quasi tutti gli studi usano l'angiografia, il grading ecocardiografico esperto o il Doppler quantitativo. Uretsky 2015 ha mostrato che l'eco integrata correla poco con il rimodellamento dopo chirurgia, mentre la RM correla bene: ogni riga che usa l'eco come riferimento eredita quell'errore.</p>
+    <p>I campioni sono piccoli: con 28 o 37 pazienti un 95% di specificità ha un intervallo di confidenza molto largo, che gli abstract non riportano.</p>
+    <p>Molte casistiche sono miste, primitive e secondarie. Nella secondaria l'orifizio è ellittico e la PISA sottostima; i numeri non si trasferiscono automaticamente alla primitiva.</p>
+    <p>Le soglie di grading vengono da ASE 2017 ed EACVI 2022, che non ho riletto in full text per questo foglio.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const G={vc:'Vena contracta',pisa:'PISA ed EROA',col:'Getto colore',pv:'Vene polmonari',inf:'Afflusso mitralico',cw:'CW e anatomia',la:'Atrio e ventricolo',comp:'Indici compositi e riferimento'};
+const T={hi:['Alta','hi',3],me:['Media','me',2],lo:['Bassa','lo',1]};
+const R=[
+ {g:'vc',p:'VC 2D biplana',c:'≥ 5 mm',e:'RVol > 60 mL ed EROA > 0,40 cm² (metodo volumetrico PW)',s:null,sp:null,o:'Nessun falso positivo osservato: VPP 100%',st:'Hall 1997 · 80 pz · prevalentemente secondaria (12 prolassi)',or:'abstract',t:'me',l:'Cut-off diverso dai 7 mm delle linee guida; poca primitiva',d:'10.1161/01.cir.95.3.636'},
+ {g:'vc',p:'VC 2D biplana',c:'≤ 3 mm',e:'Esclusione di RVol ≥ 60 mL ed EROA ≥ 0,40 cm²',s:null,sp:null,o:'Corretta in 24/29 pazienti (83%)',st:'Hall 1997 · 80 pz',or:'abstract',t:'me',l:'1 mm di errore è un terzo del valore',d:'10.1161/01.cir.95.3.636'},
+ {g:'vc',p:'Area VC 3D',c:'≥ 0,41 cm²',e:'Severa contro moderata (metodo integrativo 2D ASE)',s:97,sp:82,o:'PISA 2D sottostimava del 27% nella funzionale',st:'Zeng 2011 · 83 pz · eziologia mista',or:'abstract',t:'me',l:'Riferimento ecocardiografico, bias di incorporazione',d:'10.1161/CIRCIMAGING.110.961649'},
+ {g:'pisa',p:'Raggio PISA',c:'≥ 7 mm (Va 25 cm/s)',e:'Grado angiografico III o IV',s:82,sp:94,o:'r 0,91 con il grado angiografico',st:'Miró Palau 1999 · 28 pz',or:'abstract',t:'lo',l:'Nyquist 25 cm/s, non 30–40 come oggi; campione minimo',d:'10.1016/s0167-5273(98)00355-6'},
+ {g:'pisa',p:'Raggio PISA',c:'≥ 8 mm (Va 25 cm/s)',e:'RVol ≥ 40 mL (Doppler)',s:100,sp:95,o:'Per FR ≥ 35%: sens 88%, spec 94%',st:'Miró Palau 1999 · 28 pz',or:'abstract',t:'lo',l:'Endpoint RVol 40 mL, sotto la soglia di severa',d:'10.1016/s0167-5273(98)00355-6'},
+ {g:'pisa',p:'EROA PISA',c:'≥ 15 mm²',e:'IM significativa all\'angiografia',s:91,sp:94,o:'r 0,92 con il grado angiografico',st:'Miró Palau 1999 · 28 pz',or:'abstract',t:'lo',l:'Soglia molto più bassa dei 40 mm² attuali',d:'10.1016/s0167-5273(98)00355-6'},
+ {g:'pisa',p:'EROA PISA',c:'metodo',e:'Accordo con Doppler e 2D quantitativi',s:null,sp:null,o:'r 0,97, SEE 6 mm² con convergenza ottimale (112/119)',st:'Enriquez-Sarano 1995 · 119 pz',or:'abstract',t:'me',l:'Sovrastima marcata nel prolasso con convergenza non ottimale',d:'10.1016/0735-1097(94)00434-R'},
+ {g:'pisa',p:'EROA PISA',c:'≥ 40 mm²',e:'Mortalità in IM organica asintomatica',s:null,sp:null,o:'RR morte 2,90 contro < 20 mm²; sopravvivenza 5 anni 58% contro 78% attesa',st:'Enriquez-Sarano 2005 · 456 pz prospettico',or:'abstract',t:'hi',l:'Dato prognostico, non diagnostico',d:'10.1056/NEJMoa041451'},
+ {g:'pisa',p:'Flusso PISA massimo (nomogramma)',c:'16 · 56 · 160 mL/s',e:'Gradi angiografici I–IV',s:null,sp:null,o:'Accordo κ 0,93 nella validazione (24 pz)',st:'Moya 2001 · 58 + 24 pz',or:'abstract',t:'lo',l:'Riferimento angiografico, campione piccolo',d:'10.1053/euje.2001.0088'},
+ {g:'col',p:'Area getto / area AS',c:'> 40%',e:'IM severa all\'angiografia',s:93,sp:null,o:'< 20% in 34/36 di grado I (94%)',st:'Helmcke 1987 · 147 pz',or:'calcolato da 26/28',t:'lo',l:'Sensibilità per categoria, specificità non ricavabile; Coanda',d:'10.1161/01.cir.75.1.175'},
+ {g:'col',p:'Area getto relativa TTE',c:'qualitativo',e:'Grado angiografico e frazione rigurgitante',s:null,sp:null,o:'Distingue solo grado 1 da 4; TEE meglio (r 0,78 contro 0,62)',st:'Lesbre e Tribouilloy 1991 · 76 pz',or:'abstract',t:'lo',l:'Nessun numero di accuratezza',d:'10.1093/eurheartj/12.suppl_b.10'},
+ {g:'col',p:'Area getto biplana TEE',c:'curva ROC',e:'Severa angiografica',s:null,sp:null,o:'AUC 0,99 da svegli contro 0,72 in anestesia',st:'Pieper 1996 · 37 pz',or:'abstract',t:'lo',l:'Effetto del carico: cut-off più basso in anestesia',d:'10.1016/S1053-0770(96)80200-X'},
+ {g:'col',p:'Getto colore',c:'qualsiasi',e:'EROA e RVol in multivariata',s:null,sp:null,o:'Nessuna correlazione indipendente',st:'Hall 1997 · 80 pz',or:'abstract',t:'me',l:'Conferma che l\'area non quantifica',d:'10.1161/01.cir.95.3.636'},
+ {g:'pv',p:'Inversione S, TEE',c:'presente',e:'Grado 4+ al color TEE',s:93,sp:100,o:'Discordanza tra vene destra e sinistra nel 24%',st:'Klein 1991 · 50 pz',or:'abstract',t:'me',l:'Riferimento con gli stessi errori del test',d:'10.1016/0735-1097(91)90609-d'},
+ {g:'pv',p:'Inversione S, TEE',c:'presente',e:'Grado 4+ al cateterismo',s:86,sp:81,o:'',st:'Klein 1991 · 43 pz con cateterismo',or:'abstract',t:'me',l:'Specificità più bassa con riferimento indipendente',d:'10.1016/0735-1097(91)90609-d'},
+ {g:'pv',p:'Inversione S, TTE',c:'presente',e:'IM severa al Doppler quantitativo',s:89,sp:95,o:'Accuratezza 92%; determinante principale la FR',st:'Eren 2001 · 50 pz',or:'abstract',t:'me',l:'FA più frequente nei positivi',d:'10.2143/AC.56.2.2005622'},
+ {g:'pv',p:'Inversione S, TTE',c:'presente',e:'Severa quantitativa (EROA ≥ 35 mm² o FR ≥ 50%)',s:61,sp:92,o:'Per FR ≥ 50%: sens 60%, spec 85%; 12/29 severe chirurgiche senza inversione',st:'Enriquez-Sarano 1999 · 128 pz prospettico',or:'abstract',t:'hi',l:'Riferimento quantitativo: è la stima più realistica della sensibilità',d:'10.1016/s0002-9149(98)00909-6'},
+ {g:'pv',p:'Inversione S, TEE',c:'presente',e:'IM severa all\'angiografia',s:62,sp:96,o:'Identifica 2 severe su 3',st:'Pieper 1996 · 91 pz',or:'abstract',t:'me',l:'Riferimento angiografico',d:'10.1016/s0002-9149(96)90066-1'},
+ {g:'pv',p:'Inversione S, TEE',c:'presente',e:'Grado angiografico 3 o 4',s:97,sp:95,o:'Non influenzata da ritmo o eccentricità del getto',st:'Lai 1993 · 89 pz',or:'abstract',t:'me',l:'Endpoint 3+ e 4+ insieme, più facile da centrare',d:'10.1016/0002-9149(93)90303-t'},
+ {g:'pv',p:'Discordanza tra vene',c:'destra contro sinistra',e:'Pattern diverso nelle due vene',s:null,sp:null,o:'22% dei casi, quasi sempre destra più alterata, non spiegata dalla direzione del getto',st:'Mark 1995 · 37 pz TEE intraoperatorio',or:'abstract',t:'me',l:'Anestesia generale; RM (Galjee 1995) non trova differenze tra vene',d:'10.1097/00000539-199503000-00009'},
+ {g:'pv',p:'Inversione S (modello animale)',c:'VTI sistolica',e:'Volume rigurgitante misurato con flussimetri',s:null,sp:null,o:'r −0,84 con il volume; conta anche l\'onda v',st:'Teien 1995 · 6 pecore, 24 stati',or:'abstract',t:'lo',l:'Animale; mostra il peso della compliance atriale',d:'10.1016/0735-1097(94)00338-q'},
+ {g:'inf',p:'Onda E',c:'> 1,2 m/s',e:'IM severa (esperto e FR)',s:86,sp:86,o:'VPP 75%; r 0,52 con FR',st:'Thomas 1998 · 102 pz retrospettivo',or:'abstract',t:'me',l:'Età, rilasciamento, FA, stenosi mitralica',d:'10.1016/s0735-1097(97)00454-3'},
+ {g:'inf',p:'Pattern A dominante',c:'E/A < 1',e:'Esclusione di IM severa',s:null,sp:null,o:'Nessun paziente con severa aveva A dominante',st:'Thomas 1998 · 102 pz',or:'abstract',t:'me',l:'Vale in ritmo sinusale e senza stenosi',d:'10.1016/s0735-1097(97)00454-3'},
+ {g:'inf',p:'VTI mitrale / VTI aortico',c:'> 1,3',e:'FR > 40% emodinamica',s:80,sp:87,o:'r 0,77 con FR',st:'Lesbre e Tribouilloy 1991 · 37 pz',or:'abstract',t:'lo',l:'Endpoint FR > 40%, non ≥ 50%; ASE usa > 1,4',d:'10.1093/eurheartj/12.suppl_b.10'},
+ {g:'cw',p:'Densità e forma CW',c:'denso, triangolare',e:'IM severa',s:null,sp:null,o:'Segno di supporto per consenso',st:'ASE 2017, EACVI 2022',or:'linee guida',t:'lo',l:'Nessuno studio di accuratezza trovato',d:'10.1016/j.echo.2017.01.007'},
+ {g:'cw',p:'Flail o rottura di corda',c:'presente',e:'IM severa',s:null,sp:null,o:'Criterio specifico per consenso',st:'ASE 2017, EACVI 2022',or:'linee guida',t:'me',l:'Nessun numero verificato in questa ricerca',d:'10.1093/ehjci/jeab253'},
+ {g:'la',p:'Atrio sinistro dilatato',c:'dimensione 2D',e:'EROA e RVol in multivariata',s:null,sp:null,o:'Nessuna correlazione indipendente',st:'Hall 1997 · 80 pz',or:'abstract',t:'me',l:'Riflette durata e pressione, non il rigurgito',d:'10.1161/01.cir.95.3.636'},
+ {g:'la',p:'Atrio sinistro normale',c:'≤ 34 mL/m²',e:'Rende improbabile la severa cronica',s:null,sp:null,o:'Argomento di esclusione',st:'ASE 2017',or:'linee guida',t:'lo',l:'Non vale nell\'IM acuta',d:'10.1016/j.echo.2017.01.007'},
+ {g:'la',p:'Atrio indicizzato',c:'≥ 60 mL/m²',e:'Mortalità in IM organica, ritmo sinusale',s:null,sp:null,o:'HR morte 2,8 contro < 40 mL/m²; sopravvivenza 5 anni 53% contro 76% attesa',st:'Le Tourneau 2010 · 492 pz prospettico',or:'abstract',t:'hi',l:'Prognostico, non diagnostico di severità',d:'10.1016/j.jacc.2010.02.059'},
+ {g:'la',p:'Strain di reservoir AS',c:'< 22%',e:'Sintomi in IM degenerativa severa',s:68,sp:86,o:'AUC 0,85',st:'Ingallina 2024 · 401 pz retrospettivo',or:'abstract',t:'me',l:'Predice i sintomi, non la severità',d:'10.1186/s12947-024-00333-z'},
+ {g:'la',p:'Ventricolo sinistro dilatato',c:'DTDVS, volumi',e:'IM severa cronica',s:null,sp:null,o:'Segno di supporto',st:'ASE 2017',or:'linee guida',t:'lo',l:'Nessuno studio di accuratezza trovato',d:'10.1016/j.echo.2017.01.007'},
+ {g:'comp',p:'MR Index (6 variabili, incluso atrio)',c:'≥ 2,2',e:'IM severa (esperto e FR)',s:90,sp:88,o:'VPP 79%; nessuna severa sotto 1,8',st:'Thomas 1999 · 103 pz retrospettivo',or:'abstract',t:'me',l:'Stesso gruppo e stesso riferimento dello studio sull\'onda E',d:'10.1016/s0735-1097(99)00111-4'},
+ {g:'comp',p:'Eco integrata contro RM',c:'grado',e:'Rimodellamento VS dopo chirurgia',s:null,sp:null,o:'Eco r 0,32 (ns), RM r 0,85; eco contro RM r 0,60',st:'Uretsky 2015 · 103 pz, 26 operati con RM',or:'abstract',t:'me',l:'Mette in dubbio i riferimenti ecocardiografici',d:'10.1016/j.jacc.2014.12.047'}
+];
+let filt='all',q='',sortK=null,sortDir=-1;
+const fb=document.getElementById('filters');
+fb.innerHTML=[['all','Tutti']].concat(Object.entries(G)).map(([k,v])=>`<button type="button" data-f="${k}" aria-pressed="${k==='all'}">${v}</button>`).join('');
+fb.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;filt=b.dataset.f;fb.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render();});
+document.getElementById('q').addEventListener('input',e=>{q=e.target.value.toLowerCase();render();});
+document.querySelectorAll('th.sort').forEach(th=>{
+  const go=()=>{const k=th.dataset.k;if(sortK===k)sortDir*=-1;else{sortK=k;sortDir=-1;}
+    document.querySelectorAll('th.sort').forEach(x=>x.setAttribute('aria-sort',x===th?(sortDir<0?'descending':'ascending'):'none'));render();};
+  th.addEventListener('click',go);th.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+});
+const num=v=>v==null?'<td class="num na">non riportata</td>':`<td class="num">${v}%</td>`;
+function row(r){return `<tr><td class="p">${r.p}</td><td class="cut">${r.c}</td><td class="small">${r.e}</td>${num(r.s)}${num(r.sp)}<td class="small">${r.o||''}</td><td class="small">${r.st}</td><td class="small">${r.or}</td><td><span class="chip ${T[r.t][1]}">${T[r.t][0]}</span></td><td class="small">${r.l}</td><td class="doi"><a href="https://doi.org/${r.d}" target="_blank" rel="noopener">${r.d}</a></td></tr>`;}
+function render(){
+  let rows=R.filter(r=>(filt==='all'||r.g===filt)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
+  let html='';
+  if(sortK){
+    const val=r=>sortK==='trust'?T[r.t][2]:(sortK==='sens'?r.s:r.sp);
+    rows=rows.slice().sort((a,b)=>{const va=val(a),vb=val(b);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return (va-vb)*sortDir;});
+    html=rows.map(row).join('');
+  }else{
+    Object.keys(G).forEach(gk=>{const rr=rows.filter(r=>r.g===gk);if(rr.length)html+=`<tr class="grp"><td colspan="11">${G[gk]}</td></tr>`+rr.map(row).join('');});
+  }
+  document.getElementById('tb').innerHTML=html||'<tr><td colspan="11">Nessuna riga corrisponde alla ricerca.</td></tr>';
+  document.getElementById('cnt').textContent=rows.length+' righe';
+}
+render();
+})();
+</script>
+
+</body>
+</html>
